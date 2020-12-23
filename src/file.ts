@@ -109,9 +109,12 @@ export async function saveTranslations({
   for (const translations of projectTranslations) {
     for (const [fileName, translation] of Object.entries(translations)) {
       for (const [languageCode, value] of Object.entries(translation)) {
-        await toPromise(
-          writeJSON(`${translationsPath}/${languageCode}`)(fileName)(value)
+        const translationsLanguagePath = path.join(
+          translationsPath,
+          languageCode
         );
+        await mkdirp(translationsLanguagePath);
+        await toPromise(writeJSON(translationsLanguagePath)(fileName)(value));
       }
     }
   }
