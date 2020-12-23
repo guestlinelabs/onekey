@@ -1,6 +1,10 @@
 # onekey
 
-Utility to download translations from the [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.
+Utility to download translations from [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.
+
+## Installation
+`onekey` can be installed using npm:
+`npm i -g`
 
 ## Installation
 
@@ -10,7 +14,7 @@ npm install @guestlinelabs/onekey
 
 ## Usage
 
-There is two main commands to use:
+There are two main commands to use: Fetch translations and Generate translation keys
 
 ### Fetch translations
 
@@ -19,7 +23,7 @@ Usage: onekey fetch [options]
 
 Options:
 
-  -o, --out      Path where to save the translations
+  -o, --out      Path where translations will be saved
   -p, --project  Numeric id of the OneSky project
   -f, --files    Names of the files to download from the OneSky project separated by commas
   -s, --secret   OneSky private key (it can be read from environment variable ONESKY_SECRET)
@@ -39,11 +43,11 @@ Options:
   -c, --prettier [OPTIONAL] Path for the prettier config
 ```
 
-## Generation output
+## Generated output
 
-This will generate a TypeScript type union with all the possible translation keys on your jsons (appended with the namespace that comes from the name of the file).
+This will generate a TypeScript type union with all the possible translation keys for your jsons (appended with the namespace that comes from the name of the file).
 
-So if you translation files looked like this
+So if your translation files look like this
 
 ```json
 // main.json
