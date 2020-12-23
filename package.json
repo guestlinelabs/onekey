@@ -1,5 +1,5 @@
 {
-  "name": "onekey",
+  "name": "@guestlinelabs/onekey",
   "version": "0.0.1",
   "description": "",
   "bin": "lib/cli.js",
