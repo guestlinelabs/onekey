@@ -1,4 +1,4 @@
-import { array, either, taskEither, record } from 'fp-ts';
+import { array as A, either as E, taskEither as TE, record as R } from 'fp-ts';
 import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
 import { flow, identity, pipe, constant } from 'fp-ts/lib/function';
@@ -27,8 +27,8 @@ function toError(e: unknown): Error {
   return new Error(String(e));
 }
 
-function parseJSON(e: string): either.Either<Error, unknown> {
-  return either.tryCatch(() => JSON.parse(e), toError);
+function parseJSON(e: string): E.Either<Error, unknown> {
+  return E.tryCatch(() => JSON.parse(e), toError);
 }
 
 const languageCodeMapping: { [key: string]: string } = {
@@ -99,31 +99,31 @@ function getLanguages({
   apiKey: string;
   secret: string;
   projectId: number;
-}): taskEither.TaskEither<Error, LanguageInfo[]> {
+}): TE.TaskEither<Error, LanguageInfo[]> {
   return pipe(
-    taskEither.tryCatch(
+    TE.tryCatch(
       () => onesky.getLanguages({ secret, apiKey, projectId }),
       toError
     ),
-    taskEither.chain(
+    TE.chain(
       flow(
         parseJSON,
-        either.chain((json) =>
+        E.chain((json) =>
           pipe(
             json,
             OneSkyLanguageResponse.decode,
-            either.bimap(
+            E.bimap(
               constant(new Error('Error getting OneSky language info')),
               (x) => x.data
             )
           )
         ),
-        taskEither.fromEither
+        TE.fromEither
       )
     ),
-    taskEither.map(array.filter((language) => language.is_ready_to_publish)),
-    taskEither.map(
-      array.map((language) => ({
+    TE.map(A.filter((language) => language.is_ready_to_publish)),
+    TE.map(
+      A.map((language) => ({
         code: getLanguageCode(language.code),
         englishName: language.english_name,
         localName: language.local_name,
@@ -142,14 +142,14 @@ function getFile({
   secret: string;
   projectId: number;
   fileName: string;
-}): taskEither.TaskEither<
+}): TE.TaskEither<
   Error,
   {
     [languageCode: string]: TranslationSchema;
   }
 > {
   return pipe(
-    taskEither.tryCatch(
+    TE.tryCatch(
       () =>
         onesky.getMultilingualFile({
           secret,
@@ -161,23 +161,21 @@ function getFile({
         }),
       toError
     ),
-    taskEither.chain(
+    TE.chain(
       flow(
         parseJSON,
-        either.chain((json) =>
+        E.chain((json) =>
           pipe(
             json,
             OneSkyMultilingualFileResponse.decode,
-            either.mapLeft(
-              constant(new Error('Error getting OneSky translation'))
-            )
+            E.mapLeft(constant(new Error('Error getting OneSky translation')))
           )
         ),
-        taskEither.fromEither
+        TE.fromEither
       )
     ),
-    taskEither.map(mapKeys(getLanguageCode)),
-    taskEither.map(record.map((x) => x.translation))
+    TE.map(mapKeys(getLanguageCode)),
+    TE.map(R.map((x) => x.translation))
   );
 }
 
@@ -191,17 +189,17 @@ function getProjectFiles({
   secret: string;
   projectId: number;
   files: string[];
-}): taskEither.TaskEither<Error, ProjectTranslations> {
+}): TE.TaskEither<Error, ProjectTranslations> {
   return pipe(
     files,
-    array.map((fileName) =>
+    A.map((fileName) =>
       pipe(
         getFile({ fileName, projectId, apiKey, secret }),
-        taskEither.map((x) => [fileName, x] as const)
+        TE.map((x) => [fileName, x] as const)
       )
     ),
-    array.sequence(taskEither.taskEither),
-    taskEither.map(toRecord)
+    A.sequence(TE.taskEither),
+    TE.map(toRecord)
   );
 }
 
@@ -220,17 +218,12 @@ export function fetchTranslations({
   apiKey,
   secret,
   projects,
-}: FetchTranslationsConfiguration): taskEither.TaskEither<
-  Error,
-  TranslationOptions
-> {
+}: FetchTranslationsConfiguration): TE.TaskEither<Error, TranslationOptions> {
   if (projects.length === 0) {
-    return taskEither.left(
-      Error('You have to at least pass one project to process')
-    );
+    return TE.left(Error('You have to at least pass one project to process'));
   }
 
-  return Do.Do(taskEither.taskEither)
+  return Do.Do(TE.taskEither)
     .bind(
       'languages',
       getLanguages({
@@ -243,7 +236,7 @@ export function fetchTranslations({
       'translations',
       pipe(
         projects,
-        array.map(({ files, id }) =>
+        A.map(({ files, id }) =>
           getProjectFiles({
             projectId: id,
             files,
@@ -251,7 +244,7 @@ export function fetchTranslations({
             secret,
           })
         ),
-        array.sequence(taskEither.taskEither)
+        A.sequence(TE.taskEither)
       )
     )
     .return(identity);

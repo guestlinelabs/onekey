@@ -6,7 +6,7 @@ import {
 } from './fetch-translations';
 import { generateKeys } from './generate-translation-keys';
 import prettier from 'prettier';
-import { array, either, option, taskEither } from 'fp-ts';
+import { array as A, either as E, option as O, taskEither as TE } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
@@ -19,11 +19,8 @@ import { promisify } from 'util';
 
 const writeText = (path: string) => (
   content: string
-): taskEither.TaskEither<Error, void> =>
-  taskEither.tryCatch(
-    () => promisify(fs.writeFile)(path, content, 'utf-8'),
-    either.toError
-  );
+): TE.TaskEither<Error, void> =>
+  TE.tryCatch(() => promisify(fs.writeFile)(path, content, 'utf-8'), E.toError);
 
 const toRecord = <A>(
   values: ReadonlyArray<readonly [string, A]>
@@ -31,14 +28,14 @@ const toRecord = <A>(
   return Object.fromEntries(values);
 };
 
-const readdir = (path: string): taskEither.TaskEither<Error, string[]> => {
-  return taskEither.tryCatch(() => promisify(fs.readdir)(path), either.toError);
+const readdir = (path: string): TE.TaskEither<Error, string[]> => {
+  return TE.tryCatch(() => promisify(fs.readdir)(path), E.toError);
 };
 
-async function toPromise<A>(x: taskEither.TaskEither<Error, A>): Promise<A> {
+async function toPromise<A>(x: TE.TaskEither<Error, A>): Promise<A> {
   const res = await x();
 
-  if (either.isLeft(res)) {
+  if (E.isLeft(res)) {
     throw res.left;
   }
 
@@ -47,25 +44,25 @@ async function toPromise<A>(x: taskEither.TaskEither<Error, A>): Promise<A> {
 
 const writeJSON = (folder: string) => (fileName: string) => (
   content: Record<string, unknown> | unknown[]
-): taskEither.TaskEither<Error, void> => {
+): TE.TaskEither<Error, void> => {
   const pathToFile = path.resolve(folder, fileName);
   const fileContent = JSON.stringify(content, null, 2);
 
   return pipe(
-    taskEither.tryCatch(() => mkdirp(folder), either.toError),
+    TE.tryCatch(() => mkdirp(folder), E.toError),
     () => writeText(pathToFile)(fileContent)
   );
 };
 
 const parseJSON = <A>(type: t.Type<A, any, unknown>) => (
   input: string
-): either.Either<Error, A> => {
+): E.Either<Error, A> => {
   return pipe(
-    either.tryCatch(() => JSON.parse(input), either.toError),
-    either.chain(
+    E.tryCatch(() => JSON.parse(input), E.toError),
+    E.chain(
       flow(
         type.decode,
-        either.mapLeft(flow(failure, (x) => new Error(x.join('\n'))))
+        E.mapLeft(flow(failure, (x) => new Error(x.join('\n'))))
       )
     )
   );
@@ -73,13 +70,10 @@ const parseJSON = <A>(type: t.Type<A, any, unknown>) => (
 
 const readJSON = <A>(type: t.Type<A, any, unknown>) => (
   path: string
-): taskEither.TaskEither<Error, A> => {
+): TE.TaskEither<Error, A> => {
   return pipe(
-    taskEither.tryCatch(
-      () => promisify(fs.readFile)(path, 'utf-8'),
-      either.toError
-    ),
-    taskEither.chain(flow(parseJSON(type), taskEither.fromEither))
+    TE.tryCatch(() => promisify(fs.readFile)(path, 'utf-8'), E.toError),
+    TE.chain(flow(parseJSON(type), TE.fromEither))
   );
 };
 
@@ -122,31 +116,28 @@ export async function saveTranslations({
 
 function getPrettierConfig(
   configPath = process.cwd()
-): taskEither.TaskEither<Error, option.Option<prettier.Options>> {
+): TE.TaskEither<Error, O.Option<prettier.Options>> {
   return pipe(
-    taskEither.tryCatch(
-      () => prettier.resolveConfig(configPath),
-      either.toError
-    ),
-    taskEither.map(option.fromNullable)
+    TE.tryCatch(() => prettier.resolveConfig(configPath), E.toError),
+    TE.map(O.fromNullable)
   );
 }
 
 function readTranslations(config: {
   fileNames: string[];
   translationsLocalePath: string;
-}): taskEither.TaskEither<Error, Record<string, TranslationSchema>> {
+}): TE.TaskEither<Error, Record<string, TranslationSchema>> {
   return pipe(
     config.fileNames,
-    array.map((fileName) =>
+    A.map((fileName) =>
       pipe(
         fileName,
         readJSON(TranslationSchema),
-        taskEither.map((schema) => [fileName, schema] as const)
+        TE.map((schema) => [fileName, schema] as const)
       )
     ),
-    array.sequence(taskEither.taskEither),
-    taskEither.map(toRecord)
+    A.sequence(TE.taskEither),
+    TE.map(toRecord)
   );
 }
 
@@ -158,18 +149,18 @@ export function saveKeys({
   translationsPath: string;
   defaultLocale: string;
   prettierConfigPath?: string;
-}): taskEither.TaskEither<Error, void> {
+}): TE.TaskEither<Error, void> {
   const languagesPath = path.resolve(translationsPath, 'languages.json');
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
   const outPath = path.resolve(translationsPath, 'translation.tsx');
 
-  const content = Do.Do(taskEither.taskEither)
+  const content = Do.Do(TE.taskEither)
     .bind('fileNames', readdir(translationsLocalePath))
     .bind(
       'prettierConfig',
       pipe(
         getPrettierConfig(prettierConfigPath),
-        taskEither.map(option.getOrElse(() => ({})))
+        TE.map(O.getOrElse(() => ({})))
       )
     )
     .bind('languages', readJSON(t.array(LanguageInfo))(languagesPath))
@@ -180,5 +171,5 @@ export function saveKeys({
       generateKeys({ languages, prettierConfig, translations, defaultLocale })
     );
 
-  return pipe(content, taskEither.chain(writeText(outPath)));
+  return pipe(content, TE.chain(writeText(outPath)));
 }

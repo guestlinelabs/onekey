@@ -1,16 +1,14 @@
-import { either, taskEither } from 'fp-ts';
+import { either as E, taskEither as TE } from 'fp-ts';
 import { fetchTranslations as fetchTranslationsTask } from './fetch-translations';
 
-type TaskFn<Args, Result> = (
-  args: Args
-) => taskEither.TaskEither<Error, Result>;
+type TaskFn<Args, Result> = (args: Args) => TE.TaskEither<Error, Result>;
 
 const promisify = <Args, Result>(fn: TaskFn<Args, Result>) => async (
   args: Args
 ) => {
   const x = await fn(args)();
 
-  if (either.isLeft(x)) {
+  if (E.isLeft(x)) {
     throw x.left;
   }
 

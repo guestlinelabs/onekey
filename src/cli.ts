@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { apply, option, either, ioEither } from 'fp-ts';
+import { apply as AP, option as O, either as E, ioEither as IOE } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/lib/function';
 import * as t from 'io-ts';
 import yargs from 'yargs/yargs';
@@ -8,10 +8,10 @@ import { saveKeys, saveTranslations } from './file';
 
 const strictPartial = flow(t.partial, t.exact);
 
-const readEnv = (key: string): ioEither.IOEither<Error, string> => () =>
+const readEnv = (key: string): IOE.IOEither<Error, string> => () =>
   pipe(
     process.env[key],
-    either.fromNullable(
+    E.fromNullable(
       new Error(`Could not find key ${key} in the environment variables`)
     )
   );
@@ -58,32 +58,32 @@ function getFileNames(input: string): string[] {
 
 function getFetchArguments(
   yargsInput: unknown
-): ioEither.IOEither<Error, FetchArguments> {
+): IOE.IOEither<Error, FetchArguments> {
   return pipe(
     yargsInput,
     YargsFetchArguments.decode,
-    either.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
-    ioEither.fromEither,
-    ioEither.chain((args) =>
-      apply.sequenceS(ioEither.ioEither)({
-        files: ioEither.right(getFileNames(args.files)),
-        out: ioEither.right(args.out),
-        prettier: ioEither.right(args.prettier),
-        project: ioEither.right(args.project),
+    E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
+    IOE.fromEither,
+    IOE.chain((args) =>
+      AP.sequenceS(IOE.ioEither)({
+        files: IOE.right(getFileNames(args.files)),
+        out: IOE.right(args.out),
+        prettier: IOE.right(args.prettier),
+        project: IOE.right(args.project),
         secret: pipe(
           args.secret,
-          option.fromNullable,
-          option.fold(
+          O.fromNullable,
+          O.fold(
             () => readEnv('ONESKY_PRIVATE_KEY'),
-            (x): ioEither.IOEither<Error, string> => () => either.right(x)
+            (x): IOE.IOEither<Error, string> => () => E.right(x)
           )
         ),
         apiKey: pipe(
           args.apiKey,
-          option.fromNullable,
-          option.fold(
+          O.fromNullable,
+          O.fold(
             () => readEnv('ONESKY_PUBLIC_KEY'),
-            (x): ioEither.IOEither<Error, string> => () => either.right(x)
+            (x): IOE.IOEither<Error, string> => () => E.right(x)
           )
         ),
       })
@@ -93,30 +93,30 @@ function getFetchArguments(
 
 function getGenerateArguments(
   yargsInput: unknown
-): either.Either<Error, GenerateArguments> {
+): E.Either<Error, GenerateArguments> {
   return pipe(
     yargsInput,
     GenerateArguments.decode,
-    either.mapLeft(() => new Error('Failure trying to retrieve the arguments'))
+    E.mapLeft(() => new Error('Failure trying to retrieve the arguments'))
   );
 }
 
-function getOperation(input: unknown): ioEither.IOEither<Error, Operation> {
+function getOperation(input: unknown): IOE.IOEither<Error, Operation> {
   return pipe(
     ValidYargCommand.decode(input),
-    either.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
-    either.map((x) => x._[0]),
-    ioEither.fromEither,
-    ioEither.chain((command) =>
-      apply.sequenceS(ioEither.ioEither)(
+    E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
+    E.map((x) => x._[0]),
+    IOE.fromEither,
+    IOE.chain((command) =>
+      AP.sequenceS(IOE.ioEither)(
         command === 'fetch'
           ? {
-              command: ioEither.right('fetch' as const),
+              command: IOE.right('fetch' as const),
               args: getFetchArguments(input),
             }
           : {
-              command: ioEither.right('generate' as const),
-              args: pipe(getGenerateArguments(input), ioEither.fromEither),
+              command: IOE.right('generate' as const),
+              args: pipe(getGenerateArguments(input), IOE.fromEither),
             }
       )
     )
@@ -197,7 +197,7 @@ const yarg = yargs(process.argv.slice(2))
 const program = pipe(
   yarg.argv,
   getOperation,
-  ioEither.fold(
+  IOE.fold(
     (error) => () => {
       console.error(error.message);
       yarg.showHelp();
