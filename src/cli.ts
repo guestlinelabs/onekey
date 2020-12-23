@@ -224,7 +224,8 @@ const program = pipe(
             break;
         }
       } catch (err) {
-        console.error('oopsie', err);
+        console.error(err);
+        process.exit(1);
       }
     }
   )

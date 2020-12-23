@@ -103,6 +103,7 @@ export async function saveTranslations({
     toPromise
   );
 
+  await mkdirp(translationsPath);
   await toPromise(writeJSON(translationsPath)('languages.json')(languages));
 
   for (const translations of projectTranslations) {
