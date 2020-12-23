@@ -75,7 +75,6 @@ export function isValidTypescript(
   source: string
 ): { isValid: boolean; diagnostics: readonly ts.Diagnostic[] } {
   const program = createProgram(source);
-  delint(program);
 
   const emitResult = program.emit();
 
