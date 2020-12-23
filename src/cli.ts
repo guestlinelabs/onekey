@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { apply, option, either, ioEither } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/lib/function';
 import * as t from 'io-ts';
