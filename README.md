@@ -22,8 +22,8 @@ Options:
   -o, --out      Path where to save the translations
   -p, --project  Numeric id of the OneSky project
   -f, --files    Names of the files to download from the OneSky project separated by commas
-  -s, --secret   OneSky private key (it can be read from environment variable ONESKY_SECRET)
-  -k, --apiKey   OneSky API key (it can be read from environment variable ONESKY_API_KEY)
+  -s, --secret   OneSky private key (it can be read from environment variable ONESKY_PRIVATE_KEY)
+  -k, --apiKey   OneSky API key (it can be read from environment variable ONESKY_PUBLIC_KEY)
   -c, --prettier [OPTIONAL] Path for the prettier config
 ```
 

@@ -74,7 +74,7 @@ function getFetchArguments(
           args.secret,
           option.fromNullable,
           option.fold(
-            () => readEnv('ONESKY_SECRET'),
+            () => readEnv('ONESKY_PRIVATE_KEY'),
             (x): ioEither.IOEither<Error, string> => () => either.right(x)
           )
         ),
@@ -82,7 +82,7 @@ function getFetchArguments(
           args.apiKey,
           option.fromNullable,
           option.fold(
-            () => readEnv('ONESKY_API_KEY'),
+            () => readEnv('ONESKY_PUBLIC_KEY'),
             (x): ioEither.IOEither<Error, string> => () => either.right(x)
           )
         ),
@@ -153,13 +153,13 @@ const yarg = yargs(process.argv.slice(2))
             type: 'string',
             alias: 's',
             describe:
-              'OneSky private key (it can be read from the environment variable ONESKY_SECRET)',
+              'OneSky private key (it can be read from the environment variable ONESKY_PRIVATE_KEY)',
           },
           apiKey: {
             type: 'string',
             alias: 'k',
             describe:
-              'OneSky API key (it can be read from the environment variable ONESKY_API_KEY)',
+              'OneSky API key (it can be read from the environment variable ONESKY_PUBLIC_KEY)',
           },
           prettier: {
             type: 'string',
