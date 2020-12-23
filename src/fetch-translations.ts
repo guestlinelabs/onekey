@@ -47,11 +47,12 @@ const OneSkyLanguageResponse = t.strict({
   data: t.array(OneSkyLanguageInfo),
 });
 
-export interface LanguageInfo {
-  code: string;
-  englishName: string;
-  localName: string;
-}
+export const LanguageInfo = t.strict({
+  code: t.string,
+  englishName: t.string,
+  localName: t.string,
+});
+export type LanguageInfo = t.TypeOf<typeof LanguageInfo>;
 
 export const TranslationSchema = t.record(
   t.string,
