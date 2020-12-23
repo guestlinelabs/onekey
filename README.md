@@ -3,10 +3,6 @@
 Utility to download translations from [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.
 
 ## Installation
-`onekey` can be installed using npm:
-`npm i -g`
-
-## Installation
 
 ```bash
 npm install @guestlinelabs/onekey
