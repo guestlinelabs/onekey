@@ -151,7 +151,7 @@ function readTranslations(config: {
     config.fileNames,
     A.map((fileName) =>
       pipe(
-        fileName,
+        path.join(config.translationsLocalePath, fileName),
         readJSON(TranslationSchema),
         TE.map((schema) => [fileName, schema] as const)
       )
