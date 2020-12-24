@@ -172,7 +172,7 @@ export function saveKeys({
 }): TE.TaskEither<Error, void> {
   const languagesPath = path.resolve(translationsPath, 'languages.json');
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
-  const outPath = path.resolve(translationsPath, 'translation.tsx');
+  const outPath = path.resolve(translationsPath, 'translation.ts');
 
   const content = Do.Do(TE.taskEither)
     .bind('fileNames', readdir(translationsLocalePath))
