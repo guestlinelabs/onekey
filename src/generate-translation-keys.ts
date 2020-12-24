@@ -49,6 +49,9 @@ function getKeys(
   return transformKeys(getFileKeys(file), (key) => `${namespace}:${key}`);
 }
 
+const removeJsonExtension = (file: string): string =>
+  file.replace(/\.json$/, '');
+
 export function generateKeys({
   languages,
   translations,
@@ -60,9 +63,9 @@ export function generateKeys({
   defaultLocale: string;
   prettierConfig: prettier.Options;
 }): string {
-  const namespaces = Object.keys(translations);
+  const namespaces = Object.keys(translations).map(removeJsonExtension);
   const allKeys = Object.entries(translations)
-    .map(([namespace, file]) => getKeys(namespace, file))
+    .map(([namespace, file]) => getKeys(removeJsonExtension(namespace), file))
     .reduce((acc, cur) => {
       return {
         ...acc,
