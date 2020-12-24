@@ -102,7 +102,7 @@ function getLanguages({
       () => onesky.getLanguages({ secret, apiKey, projectId }),
       toError
     ),
-    TE.chain(
+    TE.chainEitherK(
       flow(
         parseJSON,
         E.chain((json) =>
@@ -114,8 +114,7 @@ function getLanguages({
               (x) => x.data
             )
           )
-        ),
-        TE.fromEither
+        )
       )
     ),
     TE.map(A.filter((language) => language.is_ready_to_publish)),
@@ -158,7 +157,7 @@ function getFile({
         }),
       toError
     ),
-    TE.chain(
+    TE.chainEitherK(
       flow(
         parseJSON,
         E.chain((json) =>
@@ -167,8 +166,7 @@ function getFile({
             OneSkyMultilingualFileResponse.decode,
             E.mapLeft(constant(new Error('Error getting OneSky translation')))
           )
-        ),
-        TE.fromEither
+        )
       )
     ),
     TE.map(mapKeys(getLanguageCode)),

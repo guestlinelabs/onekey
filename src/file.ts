@@ -75,7 +75,7 @@ const readJSON = <A>(type: t.Type<A, any, unknown>) => (
 ): TE.TaskEither<Error, A> => {
   return pipe(
     TE.tryCatch(() => promisify(fs.readFile)(path, 'utf-8'), E.toError),
-    TE.chain(flow(parseJSON(type), TE.fromEither))
+    TE.chainEitherK(parseJSON(type))
   );
 };
 
