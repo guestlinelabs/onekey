@@ -49,7 +49,10 @@ const writeJSON = (prettierConfig: prettier.Options) => (folder: string) => (
 ): TE.TaskEither<Error, void> => {
   const pathToFile = path.resolve(folder, fileName);
   const fileContent = JSON.stringify(content, null, 2);
-  const filePrettified = prettier.format(fileContent, prettierConfig);
+  const filePrettified = prettier.format(fileContent, {
+    ...prettierConfig,
+    parser: 'json',
+  });
 
   return pipe(
     TE.tryCatch(() => mkdirp(folder), E.toError),
