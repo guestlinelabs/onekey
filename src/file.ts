@@ -1,32 +1,28 @@
-import {
-  Project,
-  fetchTranslations,
-  TranslationSchema,
-  LanguageInfo,
-} from './fetch-translations';
-import { generateKeys } from './generate-translation-keys';
+import mkdirp from 'mkdirp';
+import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
 import prettier from 'prettier';
+
 import { array as A, either as E, option as O, taskEither as TE } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
 import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
 import { failure } from 'io-ts/PathReporter';
 
-import mkdirp from 'mkdirp';
-import path from 'path';
-import fs from 'fs';
-import { promisify } from 'util';
+import { generateKeys } from './generate-translation-keys';
+import {
+  Project,
+  fetchTranslations,
+  TranslationSchema,
+  LanguageInfo,
+} from './fetch-translations';
+import { toRecord } from './utils';
 
 const writeText = (path: string) => (
   content: string
 ): TE.TaskEither<Error, void> =>
   TE.tryCatch(() => promisify(fs.writeFile)(path, content, 'utf-8'), E.toError);
-
-const toRecord = <A>(
-  values: ReadonlyArray<readonly [string, A]>
-): Record<string, A> => {
-  return Object.fromEntries(values);
-};
 
 const readdir = (path: string): TE.TaskEither<Error, string[]> => {
   return TE.tryCatch(() => promisify(fs.readdir)(path), E.toError);

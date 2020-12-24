@@ -5,6 +5,7 @@ import { flow, pipe } from 'fp-ts/lib/function';
 import * as t from 'io-ts';
 import yargs from 'yargs/yargs';
 import { saveKeys, saveTranslations } from './file';
+import { promisifyTaskEither } from './utils';
 
 const strictPartial = flow(t.partial, t.exact);
 
@@ -217,11 +218,11 @@ const program = pipe(
             });
             break;
           case 'generate':
-            await saveKeys({
+            await promisifyTaskEither(saveKeys)({
               defaultLocale: operation.args.locale || 'en-GB',
               prettierConfigPath: operation.args.prettier,
               translationsPath: operation.args.input,
-            })();
+            });
             break;
         }
       } catch (err) {

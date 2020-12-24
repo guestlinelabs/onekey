@@ -4,11 +4,8 @@ import * as t from 'io-ts';
 import { flow, identity, pipe, constant } from 'fp-ts/lib/function';
 import onesky from '@brainly/onesky-utils';
 
-const toRecord = <A>(
-  values: ReadonlyArray<readonly [string, A]>
-): Record<string, A> => {
-  return Object.fromEntries(values);
-};
+import { toRecord } from './utils';
+
 const mapKeys = <A>(f: (key: string) => string) => (
   r: Record<string, A>
 ): Record<string, A> => {
