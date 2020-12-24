@@ -221,7 +221,7 @@ const program = pipe(
               defaultLocale: operation.args.locale || 'en-GB',
               prettierConfigPath: operation.args.prettier,
               translationsPath: operation.args.input,
-            });
+            })();
             break;
         }
       } catch (err) {
