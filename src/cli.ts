@@ -213,6 +213,7 @@ const program = pipe(
               projects: [
                 { id: operation.args.project, files: operation.args.files },
               ],
+              prettierConfigPath: operation.args.prettier,
             });
             break;
           case 'generate':

@@ -42,15 +42,18 @@ async function toPromise<A>(x: TE.TaskEither<Error, A>): Promise<A> {
   return res.right;
 }
 
-const writeJSON = (folder: string) => (fileName: string) => (
+const writeJSON = (prettierConfig: prettier.Options) => (folder: string) => (
+  fileName: string
+) => (
   content: Record<string, unknown> | unknown[]
 ): TE.TaskEither<Error, void> => {
   const pathToFile = path.resolve(folder, fileName);
   const fileContent = JSON.stringify(content, null, 2);
+  const filePrettified = prettier.format(fileContent, prettierConfig);
 
   return pipe(
     TE.tryCatch(() => mkdirp(folder), E.toError),
-    () => writeText(pathToFile)(fileContent)
+    () => writeText(pathToFile)(filePrettified)
   );
 };
 
@@ -82,8 +85,10 @@ export async function saveTranslations({
   oneSkySecret,
   projects,
   translationsPath,
+  prettierConfigPath,
 }: {
   projects: Project[];
+  prettierConfigPath?: string;
   translationsPath: string;
   oneSkySecret: string;
   oneSkyApiKey: string;
@@ -97,8 +102,18 @@ export async function saveTranslations({
     toPromise
   );
 
+  const prettierConfig = await pipe(
+    getPrettierConfig(prettierConfigPath),
+    TE.chain(TE.fromOption(() => new Error())),
+    TE.getOrElse(() => async () => ({} as prettier.Options))
+  )();
+
+  const writePrettifiedJSON = writeJSON(prettierConfig);
+
   await mkdirp(translationsPath);
-  await toPromise(writeJSON(translationsPath)('languages.json')(languages));
+  await toPromise(
+    writePrettifiedJSON(translationsPath)('languages.json')(languages)
+  );
 
   for (const translations of projectTranslations) {
     for (const [fileName, translation] of Object.entries(translations)) {
@@ -108,7 +123,9 @@ export async function saveTranslations({
           languageCode
         );
         await mkdirp(translationsLanguagePath);
-        await toPromise(writeJSON(translationsLanguagePath)(fileName)(value));
+        await toPromise(
+          writePrettifiedJSON(translationsLanguagePath)(fileName)(value)
+        );
       }
     }
   }
