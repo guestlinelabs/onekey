@@ -117,11 +117,13 @@ export const getFile: OneSky['getFile'] = ({
         E.chain(
           flow(
             OneSkyMultilingualFileResponse.decode,
-            E.mapLeft(constant(new Error('Error getting OneSky translation')))
+            E.bimap(
+              constant(new Error('Error getting OneSky translation')),
+              R.map((x) => x.translation)
+            )
           )
         )
       )
-    ),
-    TE.map(R.map((x) => x.translation))
+    )
   );
 };
