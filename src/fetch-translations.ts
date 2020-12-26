@@ -1,8 +1,8 @@
 import { array as A, either as E, taskEither as TE, record as R } from 'fp-ts';
 import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
-import { flow, identity, pipe, constant } from 'fp-ts/lib/function';
-import onesky from '@brainly/onesky-utils';
+import { identity, pipe } from 'fp-ts/lib/function';
+import * as onesky from './onesky';
 
 import { toRecord } from './utils';
 
@@ -14,35 +14,11 @@ const mapKeys = <A>(f: (key: string) => string) => (
   );
 };
 
-function toError(e: unknown): Error {
-  if (e instanceof Error) return e;
-  if (
-    typeof e === 'object' &&
-    typeof (e as Record<string, unknown>)['message'] === 'string'
-  )
-    return new Error((e as Record<'message', string>).message);
-  return new Error(String(e));
-}
-
-function parseJSON(e: string): E.Either<Error, unknown> {
-  return E.tryCatch(() => JSON.parse(e), toError);
-}
-
 const languageCodeMapping: { [key: string]: string } = {
   th: 'th-TH',
   nn: 'nn-NO',
   da: 'da-DK',
 };
-
-const OneSkyLanguageInfo = t.strict({
-  is_ready_to_publish: t.boolean,
-  code: t.string,
-  english_name: t.string,
-  local_name: t.string,
-});
-const OneSkyLanguageResponse = t.strict({
-  data: t.array(OneSkyLanguageInfo),
-});
 
 export const LanguageInfo = t.strict({
   code: t.string,
@@ -56,14 +32,6 @@ export const TranslationSchema = t.record(
   t.union([t.string, t.record(t.string, t.string)])
 );
 export type TranslationSchema = t.TypeOf<typeof TranslationSchema>;
-
-const OneSkyMultilingualFileResponse = t.record(
-  t.string,
-  t.record(t.literal('translation'), TranslationSchema)
-);
-type OneSkyMultilingualFileResponse = t.TypeOf<
-  typeof OneSkyMultilingualFileResponse
->;
 
 interface TranslationFile {
   [languageCode: string]: TranslationSchema;
@@ -98,25 +66,7 @@ function getLanguages({
   projectId: number;
 }): TE.TaskEither<Error, LanguageInfo[]> {
   return pipe(
-    TE.tryCatch(
-      () => onesky.getLanguages({ secret, apiKey, projectId }),
-      toError
-    ),
-    TE.chainEitherK(
-      flow(
-        parseJSON,
-        E.chain((json) =>
-          pipe(
-            json,
-            OneSkyLanguageResponse.decode,
-            E.bimap(
-              constant(new Error('Error getting OneSky language info')),
-              (x) => x.data
-            )
-          )
-        )
-      )
-    ),
+    onesky.getLanguages({ apiKey, projectId, secret }),
     TE.map(A.filter((language) => language.is_ready_to_publish)),
     TE.map(
       A.map((language) => ({
@@ -145,31 +95,8 @@ function getFile({
   }
 > {
   return pipe(
-    TE.tryCatch(
-      () =>
-        onesky.getMultilingualFile({
-          secret,
-          apiKey,
-          projectId,
-          fileName,
-          language: 'en_EN',
-          format: 'I18NEXT_MULTILINGUAL_JSON',
-        }),
-      toError
-    ),
-    TE.chainEitherK(
-      flow(
-        parseJSON,
-        E.chain(
-          flow(
-            OneSkyMultilingualFileResponse.decode,
-            E.mapLeft(constant(new Error('Error getting OneSky translation')))
-          )
-        )
-      )
-    ),
-    TE.map(mapKeys(getLanguageCode)),
-    TE.map(R.map((x) => x.translation))
+    onesky.getFile({ apiKey, fileName, projectId, secret }),
+    TE.map(mapKeys(getLanguageCode))
   );
 }
 
