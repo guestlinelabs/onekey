@@ -160,9 +160,8 @@ function getFile({
     TE.chainEitherK(
       flow(
         parseJSON,
-        E.chain((json) =>
-          pipe(
-            json,
+        E.chain(
+          flow(
             OneSkyMultilingualFileResponse.decode,
             E.mapLeft(constant(new Error('Error getting OneSky translation')))
           )
