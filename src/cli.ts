@@ -102,9 +102,9 @@ function getGenerateArguments(
   );
 }
 
-function getOperation(input: unknown): IOE.IOEither<Error, Operation> {
+function getOperation(yargsInput: unknown): IOE.IOEither<Error, Operation> {
   return pipe(
-    ValidYargCommand.decode(input),
+    ValidYargCommand.decode(yargsInput),
     E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
     E.map((x) => x._[0]),
     IOE.fromEither,
@@ -113,11 +113,11 @@ function getOperation(input: unknown): IOE.IOEither<Error, Operation> {
         command === 'fetch'
           ? {
               command: IOE.right('fetch' as const),
-              args: getFetchArguments(input),
+              args: getFetchArguments(yargsInput),
             }
           : {
               command: IOE.right('generate' as const),
-              args: pipe(getGenerateArguments(input), IOE.fromEither),
+              args: pipe(getGenerateArguments(yargsInput), IOE.fromEither),
             }
       )
     )

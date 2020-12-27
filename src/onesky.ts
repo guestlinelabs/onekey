@@ -74,18 +74,13 @@ export const getLanguages: OneSky['getLanguages'] = ({
       () => onesky.getLanguages({ secret, apiKey, projectId }),
       toError
     ),
+    TE.chainEitherK(parseJSON),
     TE.chainEitherK(
       flow(
-        parseJSON,
-        E.chain((json) =>
-          pipe(
-            json,
-            OneSkyLanguageResponse.decode,
-            E.bimap(
-              constant(new Error('Error getting OneSky language info')),
-              (x) => x.data
-            )
-          )
+        OneSkyLanguageResponse.decode,
+        E.bimap(
+          constant(new Error('Error getting OneSky language info')),
+          (x) => x.data
         )
       )
     )
@@ -111,17 +106,13 @@ export const getFile: OneSky['getFile'] = ({
         }),
       toError
     ),
+    TE.chainEitherK(parseJSON),
     TE.chainEitherK(
       flow(
-        parseJSON,
-        E.chain(
-          flow(
-            OneSkyMultilingualFileResponse.decode,
-            E.bimap(
-              constant(new Error('Error getting OneSky translation')),
-              R.map((x) => x.translation)
-            )
-          )
+        OneSkyMultilingualFileResponse.decode,
+        E.bimap(
+          constant(new Error('Error getting OneSky translation')),
+          R.map((x) => x.translation)
         )
       )
     )

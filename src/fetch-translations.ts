@@ -1,4 +1,4 @@
-import { array as A, either as E, taskEither as TE, record as R } from 'fp-ts';
+import { array as A, taskEither as TE } from 'fp-ts';
 import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
 import { identity, pipe } from 'fp-ts/lib/function';
