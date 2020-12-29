@@ -22,7 +22,9 @@
   "license": "ISC",
   "devDependencies": {
     "@types/jest": "^26.0.19",
+    "@types/md5": "^2.2.1",
     "@types/mkdirp": "^1.0.1",
+    "@types/nock": "^11.1.0",
     "@types/node": "14.14.14",
     "@types/prettier": "^2.1.5",
     "@types/yargs": "^15.0.12",
@@ -33,6 +35,8 @@
     "eslint-config-prettier": "7.0.0",
     "eslint-plugin-prettier": "3.3.0",
     "jest": "^26.6.3",
+    "md5": "^2.3.0",
+    "nock": "^13.0.5",
     "node-dev": "6.2.0",
     "prettier": "^2.2.1",
     "rimraf": "3.0.2",
