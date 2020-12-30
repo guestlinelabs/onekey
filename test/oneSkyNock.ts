@@ -1,5 +1,6 @@
 import nock from 'nock';
 import md5 from 'md5';
+import { FetchTranslationsConfiguration } from '../src/fetch-translations';
 
 const languageData = {
   meta: { status: 200, record_count: 2 },
@@ -34,17 +35,32 @@ const languageData = {
 };
 
 const translationData = {
-  'pt-PT': {
-    translation: {
-      hello: 'Olá',
+  'main.json': {
+    'pt-PT': {
+      translation: {
+        hello: 'Olá',
+      },
+    },
+    'en-GB': {
+      translation: {
+        hello: 'Hello',
+      },
     },
   },
-  'en-GB': {
-    translation: {
-      hello: 'Hello',
+  'errors.json': {
+    'pt-PT': {
+      translation: {
+        failure: 'falha falha',
+      },
+    },
+    'en-GB': {
+      translation: {
+        failure: 'Failure',
+      },
     },
   },
 };
+type Filename = keyof typeof translationData;
 
 const getDevHash = (secret: string, timestamp: number): string =>
   md5(String(timestamp) + secret);
@@ -77,10 +93,29 @@ export const nockFile = (cfg: {
     .get(`//1/projects/${cfg.projectId}/translations/multilingual`)
     .query(
       (obj) =>
+        Object.keys(translationData).includes(cfg.fileName) &&
         obj.source_file_name === cfg.fileName &&
         obj.file_format === 'I18NEXT_MULTILINGUAL_JSON' &&
         obj.api_key === cfg.apiKey &&
         !!Number(obj.timestamp) &&
         obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
     )
-    .reply(200, translationData);
+    .reply(200, translationData[cfg.fileName as Filename]);
+
+export const nockProject = (config: FetchTranslationsConfiguration): void => {
+  for (const project of config.projects) {
+    nockLanguages({
+      apiKey: config.apiKey,
+      secret: config.secret,
+      projectId: project.id,
+    });
+    for (const file of project.files) {
+      nockFile({
+        apiKey: config.apiKey,
+        projectId: project.id,
+        fileName: file,
+        secret: config.secret,
+      });
+    }
+  }
+};

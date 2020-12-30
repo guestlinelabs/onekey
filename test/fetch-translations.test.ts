@@ -1,5 +1,5 @@
 import { fetchTranslations } from '../src/fetch-translations';
-import { nockFile, nockLanguages } from './oneSkyNock';
+import { nockFile, nockLanguages, nockProject } from './oneSkyNock';
 import { either as E } from 'fp-ts';
 import nock from 'nock';
 
@@ -22,20 +22,10 @@ describe('fetching translations', () => {
   it('will fetch translations and languages', async () => {
     const config = {
       apiKey: 'apiKey',
-      projects: [{ id: 123, files: ['main.json'] }],
+      projects: [{ id: 123, files: ['main.json', 'errors.json'] }],
       secret: 'secret',
     };
-    nockLanguages({
-      apiKey: config.apiKey,
-      secret: config.secret,
-      projectId: config.projects[0].id,
-    });
-    nockFile({
-      apiKey: config.apiKey,
-      projectId: config.projects[0].id,
-      fileName: config.projects[0].files[0],
-      secret: config.secret,
-    });
+    nockProject(config);
 
     const result = await fetchTranslations(config)();
     assertEither(result);
@@ -61,6 +51,14 @@ describe('fetching translations', () => {
             },
             'pt-PT': {
               hello: 'Olá',
+            },
+          },
+          'errors.json': {
+            'pt-PT': {
+              failure: 'falha falha',
+            },
+            'en-GB': {
+              failure: 'Failure',
             },
           },
         },
