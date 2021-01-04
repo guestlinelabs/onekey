@@ -113,10 +113,10 @@ export function generateKeys({
     .map((namespace) => `'${namespace}'`)
     .join(' , ')}];
   
-  type TranslationKeyWithoutOptions = ${simple
+  export type TranslationKeyWithoutOptions = ${simple
     .map((key) => `'${key}'`)
     .join(' | ')};
-  type TranslationWithOptions = {
+  export type TranslationWithOptions = {
     ${Object.entries(parameterized).map(
       ([key, parameters]) =>
         `'${key}': { ${parameters
