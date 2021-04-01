@@ -120,7 +120,10 @@ export function generateKeys({
     ${Object.entries(parameterized).map(
       ([key, parameters]) =>
         `'${key}': { ${parameters
-          .map((parameter) => `'${parameter}': string`)
+          .map(
+            (parameter) =>
+              `'${parameter}': ${parameter === 'count' ? 'number' : 'string'}`
+          )
           .join(',')} }`
     )}
     };
