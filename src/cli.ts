@@ -43,6 +43,7 @@ const GenerateArguments = t.intersection([
   strictPartial({
     prettier: t.string,
     locale: t.string,
+    out: t.string,
   }),
 ]);
 type GenerateArguments = t.TypeOf<typeof GenerateArguments>;
@@ -181,6 +182,11 @@ const yarg = yargs(process.argv.slice(2))
           alias: 'i',
           describe: 'Path for the json translations',
         },
+        out: {
+          type: 'string',
+          alias: 'o',
+          describe: 'Where to save the translation keys',
+        },
         prettier: {
           type: 'string',
           alias: 'c',
@@ -222,6 +228,7 @@ const program = pipe(
               defaultLocale: operation.args.locale || 'en-GB',
               prettierConfigPath: operation.args.prettier,
               translationsPath: operation.args.input,
+              translationKeysPath: operation.args.out || operation.args.input,
             });
             break;
         }

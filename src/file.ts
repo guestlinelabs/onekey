@@ -159,16 +159,18 @@ function readTranslations(config: {
 
 export function saveKeys({
   translationsPath,
+  translationKeysPath,
   defaultLocale = 'en-GB',
   prettierConfigPath,
 }: {
   translationsPath: string;
+  translationKeysPath: string;
   defaultLocale: string;
   prettierConfigPath?: string;
 }): TE.TaskEither<Error, void> {
   const languagesPath = path.resolve(translationsPath, 'languages.json');
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
-  const outPath = path.resolve(translationsPath, 'translation.ts');
+  const outPath = path.resolve(translationKeysPath, 'translation.ts');
 
   const content = Do.Do(TE.taskEither)
     .bind('fileNames', readdir(translationsLocalePath))
