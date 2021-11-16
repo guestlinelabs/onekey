@@ -184,7 +184,6 @@ const yarg = yargs(process.argv.slice(2))
         },
         out: {
           type: 'string',
-          demandOption: true,
           alias: 'o',
           describe: 'Where to save the translation keys',
         },
