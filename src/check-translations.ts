@@ -38,10 +38,10 @@ function diffSchemas(
       !comparedKeys.includes(aKey) ||
       typeof aValue !== typeof compared[aKey]
     ) {
-      checks.push('Missing key: ${aKey}');
+      checks.push(`Missing key: ${aKey}`);
     } else if (typeof aValue === 'string') {
       if (aValue !== compared[aKey]) {
-        checks.push('Value of key ${aKey} is different.');
+        checks.push(`Value of key ${aKey} is different.`);
       }
     } else {
       checks.push(...diffSchemas(aValue, compared[aKey] as TranslationSchema));
@@ -92,7 +92,11 @@ export async function checkTranslations(
             readJSON(TranslationSchema),
             toPromise
           );
-          errors.push(...diffSchemas(value, localValue));
+          errors.push(
+            ...diffSchemas(value, localValue).map(
+              (error) => `[${languageCode}/${fileName}]: ${error}`
+            )
+          );
         } catch (err) {
           errors.push(`Missing file ${fileName} on language: ${languageCode}`);
         }
