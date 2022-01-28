@@ -9,13 +9,15 @@ import { promisifyTaskEither } from './utils';
 
 const strictPartial = flow(t.partial, t.exact);
 
-const readEnv = (key: string): IOE.IOEither<Error, string> => () =>
-  pipe(
-    process.env[key],
-    E.fromNullable(
-      new Error(`Could not find key ${key} in the environment variables`)
-    )
-  );
+const readEnv =
+  (key: string): IOE.IOEither<Error, string> =>
+  () =>
+    pipe(
+      process.env[key],
+      E.fromNullable(
+        new Error(`Could not find key ${key} in the environment variables`)
+      )
+    );
 
 const ValidCommand = t.union([t.literal('fetch'), t.literal('generate')]);
 type ValidCommand = t.TypeOf<typeof ValidCommand>;
@@ -77,7 +79,9 @@ function getFetchArguments(
           O.fromNullable,
           O.fold(
             () => readEnv('ONESKY_PRIVATE_KEY'),
-            (x): IOE.IOEither<Error, string> => () => E.right(x)
+            (x): IOE.IOEither<Error, string> =>
+              () =>
+                E.right(x)
           )
         ),
         apiKey: pipe(
@@ -85,7 +89,9 @@ function getFetchArguments(
           O.fromNullable,
           O.fold(
             () => readEnv('ONESKY_PUBLIC_KEY'),
-            (x): IOE.IOEither<Error, string> => () => E.right(x)
+            (x): IOE.IOEither<Error, string> =>
+              () =>
+                E.right(x)
           )
         ),
       })

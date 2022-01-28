@@ -6,13 +6,13 @@ import * as onesky from './onesky';
 
 import { toRecord } from './utils';
 
-const mapKeys = <A>(f: (key: string) => string) => (
-  r: Record<string, A>
-): Record<string, A> => {
-  return Object.fromEntries(
-    Object.entries(r).map(([key, value]) => [f(key), value])
-  );
-};
+const mapKeys =
+  <A>(f: (key: string) => string) =>
+  (r: Record<string, A>): Record<string, A> => {
+    return Object.fromEntries(
+      Object.entries(r).map(([key, value]) => [f(key), value])
+    );
+  };
 
 const languageCodeMapping: { [key: string]: string } = {
   th: 'th-TH',

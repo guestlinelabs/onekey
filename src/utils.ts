@@ -8,14 +8,14 @@ export const toRecord = <A>(
 
 type TaskFn<Args, Result> = (args: Args) => TE.TaskEither<Error, Result>;
 
-export const promisifyTaskEither = <Args, Result>(
-  fn: TaskFn<Args, Result>
-) => async (args: Args): Promise<Result> => {
-  const x = await fn(args)();
+export const promisifyTaskEither =
+  <Args, Result>(fn: TaskFn<Args, Result>) =>
+  async (args: Args): Promise<Result> => {
+    const x = await fn(args)();
 
-  if (E.isLeft(x)) {
-    throw x.left;
-  }
+    if (E.isLeft(x)) {
+      throw x.left;
+    }
 
-  return x.right;
-};
+    return x.right;
+  };

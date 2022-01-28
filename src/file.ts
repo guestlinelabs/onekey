@@ -19,10 +19,13 @@ import {
 } from './fetch-translations';
 import { toRecord } from './utils';
 
-const writeText = (path: string) => (
-  content: string
-): TE.TaskEither<Error, void> =>
-  TE.tryCatch(() => promisify(fs.writeFile)(path, content, 'utf-8'), E.toError);
+const writeText =
+  (path: string) =>
+  (content: string): TE.TaskEither<Error, void> =>
+    TE.tryCatch(
+      () => promisify(fs.writeFile)(path, content, 'utf-8'),
+      E.toError
+    );
 
 const readdir = (path: string): TE.TaskEither<Error, string[]> => {
   return TE.tryCatch(() => promisify(fs.readdir)(path), E.toError);
@@ -38,46 +41,48 @@ async function toPromise<A>(x: TE.TaskEither<Error, A>): Promise<A> {
   return res.right;
 }
 
-const writeJSON = (prettierConfig: prettier.Options) => (folder: string) => (
-  fileName: string
-) => (
-  content: Record<string, unknown> | unknown[]
-): TE.TaskEither<Error, void> => {
-  const pathToFile = path.resolve(folder, fileName);
-  const fileContent = JSON.stringify(content, null, 2);
-  const filePrettified = prettier.format(fileContent, {
-    ...prettierConfig,
-    parser: 'json',
-  });
+const writeJSON =
+  (prettierConfig: prettier.Options) =>
+  (folder: string) =>
+  (fileName: string) =>
+  (
+    content: Record<string, unknown> | unknown[]
+  ): TE.TaskEither<Error, void> => {
+    const pathToFile = path.resolve(folder, fileName);
+    const fileContent = JSON.stringify(content, null, 2);
+    const filePrettified = prettier.format(fileContent, {
+      ...prettierConfig,
+      parser: 'json',
+    });
 
-  return pipe(
-    TE.tryCatch(() => mkdirp(folder), E.toError),
-    () => writeText(pathToFile)(filePrettified)
-  );
-};
+    return pipe(
+      TE.tryCatch(() => mkdirp(folder), E.toError),
+      () => writeText(pathToFile)(filePrettified)
+    );
+  };
 
-const parseJSON = <A>(type: t.Type<A, any, unknown>) => (
-  input: string
-): E.Either<Error, A> => {
-  return pipe(
-    E.tryCatch(() => JSON.parse(input), E.toError),
-    E.chain(
-      flow(
-        type.decode,
-        E.mapLeft(flow(failure, (x) => new Error(x.join('\n'))))
+const parseJSON =
+  <A>(type: t.Type<A, unknown, unknown>) =>
+  (input: string): E.Either<Error, A> => {
+    return pipe(
+      E.tryCatch(() => JSON.parse(input), E.toError),
+      E.chain(
+        flow(
+          type.decode,
+          E.mapLeft(flow(failure, (x) => new Error(x.join('\n'))))
+        )
       )
-    )
-  );
-};
+    );
+  };
 
-const readJSON = <A>(type: t.Type<A, any, unknown>) => (
-  path: string
-): TE.TaskEither<Error, A> => {
-  return pipe(
-    TE.tryCatch(() => promisify(fs.readFile)(path, 'utf-8'), E.toError),
-    TE.chainEitherK(parseJSON(type))
-  );
-};
+const readJSON =
+  <A>(type: t.Type<A, unknown, unknown>) =>
+  (path: string): TE.TaskEither<Error, A> => {
+    return pipe(
+      TE.tryCatch(() => promisify(fs.readFile)(path, 'utf-8'), E.toError),
+      TE.chainEitherK(parseJSON(type))
+    );
+  };
 
 export async function saveTranslations({
   oneSkyApiKey,
