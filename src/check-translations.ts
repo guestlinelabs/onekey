@@ -92,7 +92,6 @@ export async function checkTranslations(
             readJSON(TranslationSchema),
             toPromise
           );
-          console.log('hi');
           errors.push(...diffSchemas(value, localValue));
         } catch (err) {
           errors.push(`Missing file ${fileName} on language: ${languageCode}`);
