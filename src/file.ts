@@ -75,7 +75,7 @@ const parseJSON =
     );
   };
 
-const readJSON =
+export const readJSON =
   <A>(type: t.Type<A, unknown, unknown>) =>
   (path: string): TE.TaskEither<Error, A> => {
     return pipe(
