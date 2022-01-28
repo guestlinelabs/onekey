@@ -311,7 +311,7 @@ const yarg = yargs(process.argv.slice(2))
           fail: {
             type: 'boolean',
             default: false,
-            alias: 'f',
+            alias: 'l',
             describe: 'Fail when there are missing files/keys',
           },
         })
