@@ -6,7 +6,6 @@ import prettier from 'prettier';
 
 import { array as A, either as E, option as O, taskEither as TE } from 'fp-ts';
 import { flow, pipe } from 'fp-ts/function';
-import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
 import { failure } from 'io-ts/PathReporter';
 
@@ -177,22 +176,23 @@ export function saveKeys({
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
   const outPath = path.resolve(translationKeysPath, 'translation.ts');
 
-  const content = Do.Do(TE.taskEither)
-    .bind('fileNames', readdir(translationsLocalePath))
-    .bind(
-      'prettierConfig',
+  const content = pipe(
+    TE.Do,
+    TE.bind('fileNames', () => readdir(translationsLocalePath)),
+    TE.bind('prettierConfig', () =>
       pipe(
         getPrettierConfig(prettierConfigPath),
         TE.map(O.getOrElse(() => ({})))
       )
-    )
-    .bind('languages', readJSON(t.array(LanguageInfo))(languagesPath))
-    .bindL('translations', ({ fileNames }) =>
+    ),
+    TE.bind('languages', () => readJSON(t.array(LanguageInfo))(languagesPath)),
+    TE.bind('translations', ({ fileNames }) =>
       readTranslations({ fileNames, translationsLocalePath })
-    )
-    .return(({ languages, prettierConfig, translations }) =>
+    ),
+    TE.map(({ languages, prettierConfig, translations }) =>
       generateKeys({ languages, prettierConfig, translations, defaultLocale })
-    );
+    )
+  );
 
   return pipe(content, TE.chain(writeText(outPath)));
 }

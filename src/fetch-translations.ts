@@ -1,7 +1,6 @@
 import { array as A, taskEither as TE } from 'fp-ts';
-import { Do } from 'fp-ts-contrib';
 import * as t from 'io-ts';
-import { identity, pipe } from 'fp-ts/lib/function';
+import { pipe } from 'fp-ts/lib/function';
 import * as onesky from './onesky';
 
 import { toRecord } from './utils';
@@ -43,7 +42,7 @@ export interface ProjectTranslations {
 
 export interface TranslationOptions {
   languages: LanguageInfo[];
-  translations: ProjectTranslations[];
+  translations: ReadonlyArray<ProjectTranslations>;
 }
 
 function getLanguageCode(code: string): string {
@@ -144,17 +143,16 @@ export function fetchTranslations({
     return TE.left(Error('You have to at least pass one project to process'));
   }
 
-  return Do.Do(TE.taskEither)
-    .bind(
-      'languages',
+  return pipe(
+    TE.Do,
+    TE.bind('languages', () =>
       getLanguages({
         projectId: projects[0].id,
         apiKey,
         secret,
       })
-    )
-    .bind(
-      'translations',
+    ),
+    TE.bind('translations', () =>
       pipe(
         projects,
         A.map(({ files, id }) =>
@@ -165,8 +163,8 @@ export function fetchTranslations({
             secret,
           })
         ),
-        A.sequence(TE.taskEither)
+        TE.sequenceArray
       )
     )
-    .return(identity);
+  );
 }
