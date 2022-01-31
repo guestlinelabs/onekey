@@ -118,7 +118,7 @@ function getProjectFiles({
         TE.map((x) => [fileName, x] as const)
       )
     ),
-    A.sequence(TE.taskEither),
+    A.sequence(TE.ApplicativeSeq),
     TE.map(toRecord)
   );
 }

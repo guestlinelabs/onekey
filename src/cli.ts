@@ -95,7 +95,7 @@ function getFetchArguments(
     E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
     IOE.fromEither,
     IOE.chain((args) =>
-      AP.sequenceS(IOE.ioEither)({
+      AP.sequenceS(IOE.ApplicativePar)({
         files: IOE.right(getFileNames(args.files)),
         out: IOE.right(args.out),
         prettier: IOE.right(args.prettier),
@@ -134,7 +134,7 @@ function getCheckArguments(
     E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
     IOE.fromEither,
     IOE.chain((args) =>
-      AP.sequenceS(IOE.ioEither)({
+      AP.sequenceS(IOE.ApplicativePar)({
         files: IOE.right(getFileNames(args.files)),
         out: IOE.right(args.out),
         fail: IOE.right(args.fail),
@@ -181,7 +181,7 @@ function getOperation(yargsInput: unknown): IOE.IOEither<Error, Operation> {
     E.map((x) => x._[0]),
     IOE.fromEither,
     IOE.chain((command) =>
-      AP.sequenceS(IOE.ioEither)(
+      AP.sequenceS(IOE.ApplicativePar)(
         command === 'fetch'
           ? {
               command: IOE.right('fetch' as const),

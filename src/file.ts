@@ -156,7 +156,7 @@ function readTranslations(config: {
         TE.map((schema) => [fileName, schema] as const)
       )
     ),
-    A.sequence(TE.taskEither),
+    A.sequence(TE.ApplicativePar),
     TE.map(toRecord)
   );
 }
