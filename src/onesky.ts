@@ -1,5 +1,6 @@
 import { either as E, taskEither as TE, record as R } from 'fp-ts';
 import * as t from 'io-ts';
+import { report } from './reporter';
 import { flow, pipe, constant } from 'fp-ts/lib/function';
 import onesky from '@brainly/onesky-utils';
 
@@ -111,7 +112,10 @@ export const getFile: OneSky['getFile'] = ({
       flow(
         OneSkyMultilingualFileResponse.decode,
         E.bimap(
-          constant(new Error('Error getting OneSky translation')),
+          (x) =>
+            new Error(
+              `Error getting OneSky translation: ${report(x).join('\n')}`
+            ),
           R.map((x) => x.translation)
         )
       )
