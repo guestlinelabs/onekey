@@ -1,13 +1,8 @@
 import mkdirp from 'mkdirp';
 import path from 'path';
-import fs from 'fs';
-import { promisify } from 'util';
+import { readFile, writeFile, readdir } from 'fs/promises';
 import prettier from 'prettier';
-
-import { array as A, either as E, option as O, taskEither as TE } from 'fp-ts';
-import { flow, pipe } from 'fp-ts/function';
-import * as t from 'io-ts';
-import { failure } from 'io-ts/PathReporter';
+import { z } from 'zod';
 
 import { generateKeys } from './generate-translation-keys';
 import {
@@ -16,72 +11,39 @@ import {
   TranslationSchema,
   LanguageInfo,
 } from './fetch-translations';
-import { toRecord } from './utils';
 
-const writeText =
-  (path: string) =>
-  (content: string): TE.TaskEither<Error, void> =>
-    TE.tryCatch(
-      () => promisify(fs.writeFile)(path, content, 'utf-8'),
-      E.toError
-    );
+const writeJSON = async (
+  prettierConfig: prettier.Options,
+  folder: string,
+  fileName: string,
+  content: Record<string, unknown> | unknown[]
+): Promise<void> => {
+  const pathToFile = path.resolve(folder, fileName);
+  const fileContent = JSON.stringify(content, null, 2);
+  const filePrettified = prettier.format(fileContent, {
+    ...prettierConfig,
+    parser: 'json',
+  });
 
-const readdir = (path: string): TE.TaskEither<Error, string[]> => {
-  return TE.tryCatch(() => promisify(fs.readdir)(path), E.toError);
+  await mkdirp(folder);
+  await writeFile(pathToFile, filePrettified, 'utf-8');
 };
 
-async function toPromise<A>(x: TE.TaskEither<Error, A>): Promise<A> {
-  const res = await x();
+const parseJSON = <T extends z.ZodTypeAny>(
+  type: T,
+  input: string
+): z.output<T> => {
+  return type.parse(JSON.parse(input));
+};
 
-  if (E.isLeft(res)) {
-    throw res.left;
-  }
+export const readJSON = async <T extends z.ZodTypeAny>(
+  type: T,
+  path: string
+): Promise<z.output<T>> => {
+  const content = await readFile(path, 'utf-8');
 
-  return res.right;
-}
-
-const writeJSON =
-  (prettierConfig: prettier.Options) =>
-  (folder: string) =>
-  (fileName: string) =>
-  (
-    content: Record<string, unknown> | unknown[]
-  ): TE.TaskEither<Error, void> => {
-    const pathToFile = path.resolve(folder, fileName);
-    const fileContent = JSON.stringify(content, null, 2);
-    const filePrettified = prettier.format(fileContent, {
-      ...prettierConfig,
-      parser: 'json',
-    });
-
-    return pipe(
-      TE.tryCatch(() => mkdirp(folder), E.toError),
-      () => writeText(pathToFile)(filePrettified)
-    );
-  };
-
-const parseJSON =
-  <A>(type: t.Type<A, unknown, unknown>) =>
-  (input: string): E.Either<Error, A> => {
-    return pipe(
-      E.tryCatch(() => JSON.parse(input), E.toError),
-      E.chain(
-        flow(
-          type.decode,
-          E.mapLeft(flow(failure, (x) => new Error(x.join('\n'))))
-        )
-      )
-    );
-  };
-
-export const readJSON =
-  <A>(type: t.Type<A, unknown, unknown>) =>
-  (path: string): TE.TaskEither<Error, A> => {
-    return pipe(
-      TE.tryCatch(() => promisify(fs.readFile)(path, 'utf-8'), E.toError),
-      TE.chainEitherK(parseJSON(type))
-    );
-  };
+  return parseJSON(type, content);
+};
 
 export async function saveTranslations({
   oneSkyApiKey,
@@ -96,26 +58,21 @@ export async function saveTranslations({
   oneSkySecret: string;
   oneSkyApiKey: string;
 }): Promise<void> {
-  const { languages, translations: projectTranslations } = await pipe(
-    fetchTranslations({
+  const { languages, translations: projectTranslations } =
+    await fetchTranslations({
       apiKey: oneSkyApiKey,
       projects: projects,
       secret: oneSkySecret,
-    }),
-    toPromise
-  );
+    });
 
-  const prettierConfig = await pipe(
-    getPrettierConfig(prettierConfigPath),
-    TE.chain(TE.fromOption(() => new Error())),
-    TE.getOrElse(() => async () => ({} as prettier.Options))
-  )();
-
-  const writePrettifiedJSON = writeJSON(prettierConfig);
+  const prettierConfig = await getPrettierConfig(prettierConfigPath);
 
   await mkdirp(translationsPath);
-  await toPromise(
-    writePrettifiedJSON(translationsPath)('languages.json')(languages)
+  await writeJSON(
+    prettierConfig,
+    translationsPath,
+    'languages.json',
+    languages
   );
 
   for (const translations of projectTranslations) {
@@ -126,42 +83,41 @@ export async function saveTranslations({
           languageCode
         );
         await mkdirp(translationsLanguagePath);
-        await toPromise(
-          writePrettifiedJSON(translationsLanguagePath)(fileName)(value)
+        await writeJSON(
+          prettierConfig,
+          translationsLanguagePath,
+          fileName,
+          value
         );
       }
     }
   }
 }
 
-function getPrettierConfig(
+async function getPrettierConfig(
   configPath = process.cwd()
-): TE.TaskEither<Error, O.Option<prettier.Options>> {
-  return pipe(
-    TE.tryCatch(() => prettier.resolveConfig(configPath), E.toError),
-    TE.map(O.fromNullable)
-  );
+): Promise<prettier.Options> {
+  return (await prettier.resolveConfig(configPath)) ?? ({} as prettier.Options);
 }
 
-function readTranslations(config: {
+async function readTranslations(config: {
   fileNames: string[];
   translationsLocalePath: string;
-}): TE.TaskEither<Error, Record<string, TranslationSchema>> {
-  return pipe(
-    config.fileNames,
-    A.map((fileName) =>
-      pipe(
-        path.join(config.translationsLocalePath, fileName),
-        readJSON(TranslationSchema),
-        TE.map((schema) => [fileName, schema] as const)
-      )
-    ),
-    A.sequence(TE.ApplicativePar),
-    TE.map(toRecord)
+}): Promise<Record<string, TranslationSchema>> {
+  return Object.fromEntries(
+    await Promise.all(
+      config.fileNames.map(async (fileName) => {
+        const schema = await readJSON(
+          TranslationSchema,
+          path.join(config.translationsLocalePath, fileName)
+        );
+        return [fileName, schema] as const;
+      })
+    )
   );
 }
 
-export function saveKeys({
+export async function saveKeys({
   translationsPath,
   translationKeysPath,
   defaultLocale = 'en-GB',
@@ -171,28 +127,24 @@ export function saveKeys({
   translationKeysPath: string;
   defaultLocale: string;
   prettierConfigPath?: string;
-}): TE.TaskEither<Error, void> {
+}): Promise<void> {
   const languagesPath = path.resolve(translationsPath, 'languages.json');
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
   const outPath = path.resolve(translationKeysPath, 'translation.ts');
 
-  const content = pipe(
-    TE.Do,
-    TE.bind('fileNames', () => readdir(translationsLocalePath)),
-    TE.bind('prettierConfig', () =>
-      pipe(
-        getPrettierConfig(prettierConfigPath),
-        TE.map(O.getOrElse(() => ({})))
-      )
-    ),
-    TE.bind('languages', () => readJSON(t.array(LanguageInfo))(languagesPath)),
-    TE.bind('translations', ({ fileNames }) =>
-      readTranslations({ fileNames, translationsLocalePath })
-    ),
-    TE.map(({ languages, prettierConfig, translations }) =>
-      generateKeys({ languages, prettierConfig, translations, defaultLocale })
-    )
-  );
+  const fileNames = await readdir(translationsLocalePath);
+  const prettierConfig = await getPrettierConfig(prettierConfigPath);
+  const languages = await readJSON(z.array(LanguageInfo), languagesPath);
+  const translations = await readTranslations({
+    fileNames,
+    translationsLocalePath,
+  });
+  const content = generateKeys({
+    languages,
+    prettierConfig,
+    translations,
+    defaultLocale,
+  });
 
-  return pipe(content, TE.chain(writeText(outPath)));
+  await writeFile(outPath, content, 'utf-8');
 }

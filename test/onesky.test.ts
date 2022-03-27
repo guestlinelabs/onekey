@@ -1,13 +1,6 @@
 import * as onesky from '../src/onesky';
-import { either as E } from 'fp-ts';
 import nock from 'nock';
 import { nockFile, nockLanguages } from './oneSkyNock';
-
-function assertEither<A>(
-  value: E.Either<unknown, A>
-): asserts value is E.Right<A> {
-  expect(E.isRight(value)).toBe(true);
-}
 
 describe('onesky', () => {
   beforeEach(() => {
@@ -27,9 +20,8 @@ describe('onesky', () => {
     };
 
     nockLanguages(oneSkyConfig);
-    const result = await onesky.getLanguages(oneSkyConfig)();
-    assertEither(result);
-    expect(result.right).toEqual([
+    const result = await onesky.getLanguages(oneSkyConfig);
+    expect(result).toEqual([
       {
         code: 'en-GB',
         english_name: 'English (United Kingdom)',
@@ -54,9 +46,8 @@ describe('onesky', () => {
     };
 
     nockFile(oneSkyConfig);
-    const result = await onesky.getFile(oneSkyConfig)();
-    assertEither(result);
-    expect(result.right).toEqual({
+    const result = await onesky.getFile(oneSkyConfig);
+    expect(result).toEqual({
       'en-GB': { hello: 'Hello' },
       'pt-PT': { hello: 'Olá' },
     });

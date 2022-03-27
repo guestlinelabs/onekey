@@ -1,7 +1,5 @@
 import path from 'path';
-import * as t from 'io-ts';
-import { either as E, taskEither as TE } from 'fp-ts';
-import { pipe } from 'fp-ts/function';
+import { z } from 'zod';
 import {
   fetchTranslations,
   LanguageInfo,
@@ -15,16 +13,6 @@ export interface CheckTranslationsConfiguration {
   secret: string;
   projects: Project[];
   translationsPath: string;
-}
-
-async function toPromise<A>(x: TE.TaskEither<Error, A>): Promise<A> {
-  const res = await x();
-
-  if (E.isLeft(res)) {
-    throw res.left;
-  }
-
-  return res.right;
 }
 
 function diffSchemas(
@@ -55,18 +43,15 @@ export async function checkTranslations(
   config: CheckTranslationsConfiguration
 ): Promise<string[]> {
   const errors: string[] = [];
-  const { languages, translations: projectTranslations } = await pipe(
-    fetchTranslations(config),
-    toPromise
-  );
+  const { languages, translations: projectTranslations } =
+    await fetchTranslations(config);
   const languagesFilePath = path.join(
     config.translationsPath,
     'languages.json'
   );
-  const localLanguages = await pipe(
-    languagesFilePath,
-    readJSON(t.array(LanguageInfo)),
-    toPromise
+  const localLanguages = await readJSON(
+    z.array(LanguageInfo),
+    languagesFilePath
   );
 
   for (const language of languages) {
@@ -87,10 +72,9 @@ export async function checkTranslations(
           fileName
         );
         try {
-          const localValue = await pipe(
-            translationsFilePath,
-            readJSON(TranslationSchema),
-            toPromise
+          const localValue = await readJSON(
+            TranslationSchema,
+            translationsFilePath
           );
           errors.push(
             ...diffSchemas(value, localValue).map(

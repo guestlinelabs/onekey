@@ -1,17 +1,14 @@
-import { array as A, taskEither as TE } from 'fp-ts';
-import * as t from 'io-ts';
-import { pipe } from 'fp-ts/lib/function';
+import { z } from 'zod';
 import * as onesky from './onesky';
 
-import { toRecord } from './utils';
-
-const mapKeys =
-  <A>(f: (key: string) => string) =>
-  (r: Record<string, A>): Record<string, A> => {
-    return Object.fromEntries(
-      Object.entries(r).map(([key, value]) => [f(key), value])
-    );
-  };
+const mapKeys = <A>(
+  f: (key: string) => string,
+  r: Record<string, A>
+): Record<string, A> => {
+  return Object.fromEntries(
+    Object.entries(r).map(([key, value]) => [f(key), value])
+  );
+};
 
 const languageCodeMapping: { [key: string]: string } = {
   th: 'th-TH',
@@ -19,18 +16,18 @@ const languageCodeMapping: { [key: string]: string } = {
   da: 'da-DK',
 };
 
-export const LanguageInfo = t.strict({
-  code: t.string,
-  englishName: t.string,
-  localName: t.string,
+export const LanguageInfo = z.object({
+  code: z.string(),
+  englishName: z.string(),
+  localName: z.string(),
 });
-export type LanguageInfo = t.TypeOf<typeof LanguageInfo>;
+export type LanguageInfo = z.infer<typeof LanguageInfo>;
 
-export const TranslationSchema = t.record(
-  t.string,
-  t.union([t.string, t.record(t.string, t.string)])
+export const TranslationSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.record(z.string(), z.string())])
 );
-export type TranslationSchema = t.TypeOf<typeof TranslationSchema>;
+export type TranslationSchema = z.infer<typeof TranslationSchema>;
 
 interface TranslationFile {
   [languageCode: string]: TranslationSchema;
@@ -55,7 +52,7 @@ function getLanguageCode(code: string): string {
   }
 }
 
-function getLanguages({
+async function getLanguages({
   apiKey,
   secret,
   projectId,
@@ -63,21 +60,19 @@ function getLanguages({
   apiKey: string;
   secret: string;
   projectId: number;
-}): TE.TaskEither<Error, LanguageInfo[]> {
-  return pipe(
-    onesky.getLanguages({ apiKey, projectId, secret }),
-    TE.map(A.filter((language) => language.is_ready_to_publish)),
-    TE.map(
-      A.map((language) => ({
-        code: getLanguageCode(language.code),
-        englishName: language.english_name,
-        localName: language.local_name,
-      }))
-    )
-  );
+}): Promise<LanguageInfo[]> {
+  const languages = await onesky.getLanguages({ apiKey, projectId, secret });
+
+  return languages
+    .filter((language) => language.is_ready_to_publish)
+    .map((language) => ({
+      code: getLanguageCode(language.code),
+      englishName: language.english_name,
+      localName: language.local_name,
+    }));
 }
 
-function getFile({
+async function getFile({
   apiKey,
   secret,
   projectId,
@@ -87,19 +82,15 @@ function getFile({
   secret: string;
   projectId: number;
   fileName: string;
-}): TE.TaskEither<
-  Error,
-  {
-    [languageCode: string]: TranslationSchema;
-  }
-> {
-  return pipe(
-    onesky.getFile({ apiKey, fileName, projectId, secret }),
-    TE.map(mapKeys(getLanguageCode))
-  );
+}): Promise<{
+  [languageCode: string]: TranslationSchema;
+}> {
+  const file = await onesky.getFile({ apiKey, fileName, projectId, secret });
+
+  return mapKeys(getLanguageCode, file);
 }
 
-function getProjectFiles({
+async function getProjectFiles({
   apiKey,
   secret,
   projectId,
@@ -109,17 +100,15 @@ function getProjectFiles({
   secret: string;
   projectId: number;
   files: string[];
-}): TE.TaskEither<Error, ProjectTranslations> {
-  return pipe(
-    files,
-    A.map((fileName) =>
-      pipe(
-        getFile({ fileName, projectId, apiKey, secret }),
-        TE.map((x) => [fileName, x] as const)
+}): Promise<ProjectTranslations> {
+  return Object.fromEntries(
+    await Promise.all(
+      files.map((fileName) =>
+        getFile({ fileName, projectId, apiKey, secret }).then(
+          (x) => [fileName, x] as const
+        )
       )
-    ),
-    A.sequence(TE.ApplicativeSeq),
-    TE.map(toRecord)
+    )
   );
 }
 
@@ -134,37 +123,25 @@ export interface FetchTranslationsConfiguration {
   projects: Project[];
 }
 
-export function fetchTranslations({
+export async function fetchTranslations({
   apiKey,
   secret,
   projects,
-}: FetchTranslationsConfiguration): TE.TaskEither<Error, TranslationOptions> {
+}: FetchTranslationsConfiguration): Promise<TranslationOptions> {
   if (projects.length === 0) {
-    return TE.left(Error('You have to at least pass one project to process'));
+    throw Error('You have to at least pass one project to process');
   }
 
-  return pipe(
-    TE.Do,
-    TE.bind('languages', () =>
-      getLanguages({
-        projectId: projects[0].id,
-        apiKey,
-        secret,
-      })
-    ),
-    TE.bind('translations', () =>
-      pipe(
-        projects,
-        A.map(({ files, id }) =>
-          getProjectFiles({
-            projectId: id,
-            files,
-            apiKey,
-            secret,
-          })
-        ),
-        TE.sequenceArray
-      )
+  const languages = await getLanguages({
+    projectId: projects[0].id,
+    apiKey,
+    secret,
+  });
+  const translations = await Promise.all(
+    projects.map(({ files, id }) =>
+      getProjectFiles({ projectId: id, files, apiKey, secret })
     )
   );
+
+  return { languages, translations };
 }
