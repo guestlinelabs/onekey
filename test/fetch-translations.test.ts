@@ -1,13 +1,6 @@
 import { fetchTranslations } from '../src/fetch-translations';
-import { nockFile, nockLanguages, nockProject } from './oneSkyNock';
-import { either as E } from 'fp-ts';
+import { nockProject } from './oneSkyNock';
 import nock from 'nock';
-
-function assertEither<A>(
-  value: E.Either<unknown, A>
-): asserts value is E.Right<A> {
-  expect(E.isRight(value)).toBe(true);
-}
 
 describe('fetching translations', () => {
   beforeEach(() => {
@@ -27,10 +20,9 @@ describe('fetching translations', () => {
     };
     nockProject(config);
 
-    const result = await fetchTranslations(config)();
-    assertEither(result);
+    const result = await fetchTranslations(config);
 
-    expect(result.right).toEqual({
+    expect(result).toEqual({
       languages: [
         {
           code: 'en-GB',

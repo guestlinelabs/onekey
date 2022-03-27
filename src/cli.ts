@@ -1,78 +1,62 @@
 #!/usr/bin/env node
 
-import { apply as AP, option as O, either as E, ioEither as IOE } from 'fp-ts';
-import { flow, pipe } from 'fp-ts/lib/function';
-import * as t from 'io-ts';
+import { z } from 'zod';
 import yargs from 'yargs/yargs';
 import { saveKeys, saveTranslations } from './file';
 import { checkTranslations } from './check-translations';
-import { promisifyTaskEither } from './utils';
 
-const strictPartial = flow(t.partial, t.exact);
+const readEnv = (key: string): string => {
+  const env = process.env[key];
 
-const readEnv =
-  (key: string): IOE.IOEither<Error, string> =>
-  () =>
-    pipe(
-      process.env[key],
-      E.fromNullable(
-        new Error(`Could not find key ${key} in the environment variables`)
-      )
-    );
+  if (!env)
+    throw Error(`Could not find key ${key} in the environment variables`);
 
-const ValidCommand = t.union([
-  t.literal('fetch'),
-  t.literal('generate'),
-  t.literal('check'),
-]);
-type ValidCommand = t.TypeOf<typeof ValidCommand>;
-const ValidYargCommand = t.strict({
-  _: t.tuple([ValidCommand]),
+  return env;
+};
+
+const ValidCommand = z.enum(['fetch', 'generate', 'check']);
+type ValidCommand = z.infer<typeof ValidCommand>;
+const ValidYargCommand = z.object({
+  _: z.tuple([ValidCommand]),
 });
 
-const YargsFetchArguments = t.intersection([
-  t.strict({ out: t.string, project: t.number, files: t.string }),
-  strictPartial({
-    prettier: t.string,
-    secret: t.string,
-    apiKey: t.string,
-  }),
-]);
-type YargsFetchArguments = t.TypeOf<typeof YargsFetchArguments>;
+const YargsFetchArguments = z.object({
+  out: z.string(),
+  project: z.number(),
+  files: z.string(),
+  prettier: z.string().optional(),
+  secret: z.string().optional(),
+  apiKey: z.string().optional(),
+});
+type YargsFetchArguments = z.infer<typeof YargsFetchArguments>;
 interface FetchArguments extends Omit<YargsFetchArguments, 'files'> {
   files: string[];
   secret: string;
   apiKey: string;
 }
 
-const YargsCheckArguments = t.intersection([
-  t.strict({
-    out: t.string,
-    project: t.number,
-    files: t.string,
-    fail: t.boolean,
-  }),
-  strictPartial({
-    secret: t.string,
-    apiKey: t.string,
-  }),
-]);
-type YargsCheckArguments = t.TypeOf<typeof YargsCheckArguments>;
+const YargsCheckArguments = z.object({
+  out: z.string(),
+  project: z.number(),
+  files: z.string(),
+  fail: z.boolean(),
+  secret: z.string().optional(),
+  apiKey: z.string().optional(),
+});
+type YargsCheckArguments = z.infer<typeof YargsCheckArguments>;
 interface CheckArguments extends Omit<YargsCheckArguments, 'files'> {
   files: string[];
   secret: string;
   apiKey: string;
 }
 
-const GenerateArguments = t.intersection([
-  t.strict({ input: t.string }),
-  strictPartial({
-    prettier: t.string,
-    locale: t.string,
-    out: t.string,
-  }),
-]);
-type GenerateArguments = t.TypeOf<typeof GenerateArguments>;
+const GenerateArguments = z.object({
+  input: z.string(),
+  prettier: z.string().optional(),
+  locale: z.string().optional(),
+  out: z.string().optional(),
+});
+type GenerateArguments = z.infer<typeof GenerateArguments>;
 
 type Operation =
   | { command: 'fetch'; args: FetchArguments }
@@ -86,119 +70,74 @@ function getFileNames(input: string): string[] {
     .map((x) => (x.endsWith('.json') ? x : `${x}.json`));
 }
 
-function getFetchArguments(
-  yargsInput: unknown
-): IOE.IOEither<Error, FetchArguments> {
-  return pipe(
-    yargsInput,
-    YargsFetchArguments.decode,
-    E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
-    IOE.fromEither,
-    IOE.chain((args) =>
-      AP.sequenceS(IOE.ApplicativePar)({
-        files: IOE.right(getFileNames(args.files)),
-        out: IOE.right(args.out),
-        prettier: IOE.right(args.prettier),
-        project: IOE.right(args.project),
-        secret: pipe(
-          args.secret,
-          O.fromNullable,
-          O.fold(
-            () => readEnv('ONESKY_PRIVATE_KEY'),
-            (x): IOE.IOEither<Error, string> =>
-              () =>
-                E.right(x)
-          )
-        ),
-        apiKey: pipe(
-          args.apiKey,
-          O.fromNullable,
-          O.fold(
-            () => readEnv('ONESKY_PUBLIC_KEY'),
-            (x): IOE.IOEither<Error, string> =>
-              () =>
-                E.right(x)
-          )
-        ),
-      })
-    )
-  );
+function getFetchArguments(yargsInput: unknown): FetchArguments {
+  try {
+    const args = YargsFetchArguments.parse(yargsInput);
+
+    return {
+      files: getFileNames(args.files),
+      out: args.out,
+      prettier: args.prettier,
+      project: args.project,
+      secret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
+      apiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
+    };
+  } catch (err) {
+    throw Error('Failure trying to retrieve the arguments');
+  }
 }
 
-function getCheckArguments(
-  yargsInput: unknown
-): IOE.IOEither<Error, CheckArguments> {
-  return pipe(
-    yargsInput,
-    YargsCheckArguments.decode,
-    E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
-    IOE.fromEither,
-    IOE.chain((args) =>
-      AP.sequenceS(IOE.ApplicativePar)({
-        files: IOE.right(getFileNames(args.files)),
-        out: IOE.right(args.out),
-        fail: IOE.right(args.fail),
-        project: IOE.right(args.project),
-        secret: pipe(
-          args.secret,
-          O.fromNullable,
-          O.fold(
-            () => readEnv('ONESKY_PRIVATE_KEY'),
-            (x): IOE.IOEither<Error, string> =>
-              () =>
-                E.right(x)
-          )
-        ),
-        apiKey: pipe(
-          args.apiKey,
-          O.fromNullable,
-          O.fold(
-            () => readEnv('ONESKY_PUBLIC_KEY'),
-            (x): IOE.IOEither<Error, string> =>
-              () =>
-                E.right(x)
-          )
-        ),
-      })
-    )
-  );
+function getCheckArguments(yargsInput: unknown): CheckArguments {
+  try {
+    const args = YargsCheckArguments.parse(yargsInput);
+
+    return {
+      files: getFileNames(args.files),
+      out: args.out,
+      fail: args.fail,
+      project: args.project,
+      secret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
+      apiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
+    };
+  } catch (err) {
+    throw Error('Failure trying to retrieve the arguments');
+  }
 }
 
-function getGenerateArguments(
-  yargsInput: unknown
-): E.Either<Error, GenerateArguments> {
-  return pipe(
-    yargsInput,
-    GenerateArguments.decode,
-    E.mapLeft(() => new Error('Failure trying to retrieve the arguments'))
-  );
+function getGenerateArguments(yargsInput: unknown): GenerateArguments {
+  try {
+    const args = GenerateArguments.parse(yargsInput);
+
+    return args;
+  } catch (err) {
+    throw Error('Failure trying to retrieve the arguments');
+  }
 }
 
-function getOperation(yargsInput: unknown): IOE.IOEither<Error, Operation> {
-  return pipe(
-    ValidYargCommand.decode(yargsInput),
-    E.mapLeft(() => new Error('Failure trying to retrieve the arguments')),
-    E.map((x) => x._[0]),
-    IOE.fromEither,
-    IOE.chain((command) =>
-      AP.sequenceS(IOE.ApplicativePar)(
-        command === 'fetch'
-          ? {
-              command: IOE.right('fetch' as const),
-              args: getFetchArguments(yargsInput),
-            }
-          : command === 'generate'
-          ? {
-              command: IOE.right('generate' as const),
-              args: pipe(getGenerateArguments(yargsInput), IOE.fromEither),
-            }
-          : {
-              command: IOE.right('check' as const),
-              args: getCheckArguments(yargsInput),
-            }
-      )
-    )
-  );
+function getOperation(yargsInput: unknown): Operation {
+  try {
+    const [command] = ValidYargCommand.parse(yargsInput)._;
+
+    switch (command) {
+      case 'fetch':
+        return {
+          command: 'fetch',
+          args: getFetchArguments(yargsInput),
+        };
+      case 'generate':
+        return {
+          command: 'generate',
+          args: getGenerateArguments(yargsInput),
+        };
+      case 'check':
+        return {
+          command: 'check',
+          args: getCheckArguments(yargsInput),
+        };
+    }
+  } catch (err) {
+    throw Error('Failure trying to retrieve the arguments');
+  }
 }
 
 async function check(args: CheckArguments) {
@@ -347,46 +286,43 @@ const yarg = yargs(process.argv.slice(2))
   )
   .help();
 
-const program = pipe(
-  yarg.argv,
-  getOperation,
-  IOE.fold(
-    (error) => () => {
-      console.error(error.message);
-      yarg.showHelp();
-    },
-    (operation) => async () => {
-      try {
-        switch (operation.command) {
-          case 'fetch':
-            await saveTranslations({
-              oneSkyApiKey: operation.args.apiKey,
-              oneSkySecret: operation.args.secret,
-              translationsPath: operation.args.out,
-              projects: [
-                { id: operation.args.project, files: operation.args.files },
-              ],
-              prettierConfigPath: operation.args.prettier,
-            });
-            break;
-          case 'check':
-            await check(operation.args);
-            break;
-          case 'generate':
-            await promisifyTaskEither(saveKeys)({
-              defaultLocale: operation.args.locale || 'en-GB',
-              prettierConfigPath: operation.args.prettier,
-              translationsPath: operation.args.input,
-              translationKeysPath: operation.args.out || operation.args.input,
-            });
-            break;
-        }
-      } catch (err) {
-        console.error(err);
-        process.exit(1);
+const program = async () => {
+  try {
+    const operation = getOperation(yarg.argv);
+
+    try {
+      switch (operation.command) {
+        case 'fetch':
+          await saveTranslations({
+            oneSkyApiKey: operation.args.apiKey,
+            oneSkySecret: operation.args.secret,
+            translationsPath: operation.args.out,
+            projects: [
+              { id: operation.args.project, files: operation.args.files },
+            ],
+            prettierConfigPath: operation.args.prettier,
+          });
+          break;
+        case 'check':
+          await check(operation.args);
+          break;
+        case 'generate':
+          await saveKeys({
+            defaultLocale: operation.args.locale || 'en-GB',
+            prettierConfigPath: operation.args.prettier,
+            translationsPath: operation.args.input,
+            translationKeysPath: operation.args.out || operation.args.input,
+          });
+          break;
       }
+    } catch (err) {
+      console.error(err);
+      process.exit(1);
     }
-  )
-);
+  } catch (err) {
+    console.error((err as Error).message);
+    yarg.showHelp();
+  }
+};
 
 program();
