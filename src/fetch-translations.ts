@@ -11,9 +11,15 @@ const mapKeys = <A>(
 };
 
 const languageCodeMapping: { [key: string]: string } = {
+  es: 'es-ES',
+  it: 'it-IT',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  nl: 'nl-NL',
+  en: 'en-GB',
   th: 'th-TH',
   nn: 'nn-NO',
-  da: 'da-DK',
+  da: 'da-DK'
 };
 
 export const LanguageInfo = z.object({
