@@ -16,8 +16,6 @@ const OneSkyLanguageResponse = z.object({
 const TranslationSchema = z.record(z.union([z.string(), z.record(z.string())]));
 type TranslationSchema = z.infer<typeof TranslationSchema>;
 
-const OneSkyFileResponse = z.object({ translation: TranslationSchema });
-
 interface TranslationFile {
   [languageCode: string]: TranslationSchema;
 }
@@ -66,7 +64,7 @@ export const getFile: OneSky['getFile'] = async ({
   try {
     const obj: Record<string, TranslationSchema> = {};
     for (const { code } of languages) {
-      console.log('Fetching file:', fileName,'for locale:', code);
+      console.log('Fetching file:', fileName, 'for locale:', code);
 
       const response = await onesky.getFile({
         secret,
