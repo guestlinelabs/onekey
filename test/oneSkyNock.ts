@@ -35,24 +35,25 @@ const languageData = {
 };
 
 const translationData = {
-  'main.json': {
-    'pt-PT': {
-      hello: 'Olá',
+    'main.json': {
+      'en-GB': {
+        hello: 'Hello',
+      },
+      'pt-PT': {
+        hello: 'Olá',
+      },
     },
-    'en-GB': {
-      hello: 'Hello',
+    'errors.json': {
+      'pt-PT': {
+        failure: 'falha falha',
+      },
+      'en-GB': {
+        failure: 'Failure',
+      },
     },
-  },
-  'errors.json': {
-    'pt-PT': {
-      failure: 'falha falha',
-    },
-    'en-GB': {
-      failure: 'Failure',
-    },
-  },
 };
 type Filename = keyof typeof translationData;
+type LanguageFileName = keyof typeof translationData[Filename];
 
 const getDevHash = (secret: string, timestamp: number): string =>
   md5(String(timestamp) + secret);
@@ -80,27 +81,24 @@ export const nockFile = (cfg: {
   secret: string;
   fileName: string;
   apiKey: string;
-}): nock.Scope =>
+}): void =>
 {
   for (const {code} of languageData.data) {
     nockOneSky()
     .get(`//1/projects/${cfg.projectId}/translations`)
     .query(
-      (obj) =>
-        Object.keys(translationData).includes(cfg.fileName) &&
+      (obj) => {
+        return Object.keys(translationData).includes(cfg.fileName) &&
         obj.source_file_name === cfg.fileName &&
         obj.api_key === cfg.apiKey &&
-        obj.language === code &&
+        obj.locale === code &&
         !!Number(obj.timestamp) &&
         obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
+      }
     )
-    .reply(200, translationData[cfg.fileName as Filename][code]);
-
+    .reply(200, translationData[cfg.fileName as Filename][code as LanguageFileName]);
   }
-
-  return null;
 }
-
 
 export const nockProject = (config: FetchTranslationsConfiguration): void => {
   for (const project of config.projects) {
