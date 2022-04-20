@@ -43,6 +43,18 @@ describe('onesky', () => {
       secret: 'fakeSecret',
       fileName: 'main.json',
       projectId: 123,
+      languages: [
+        {
+          code: 'en-GB',
+          englishName: 'English (United Kingdom)',
+          localName: 'English (United Kingdom)',
+        },
+        {
+          code: 'pt-PT',
+          englishName: 'Portuguese (Portugal)',
+          localName: 'Português (Europeu)',
+        },
+      ],
     };
 
     nockFile(oneSkyConfig);

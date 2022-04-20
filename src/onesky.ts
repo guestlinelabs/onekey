@@ -66,6 +66,8 @@ export const getFile: OneSky['getFile'] = async ({
   try {
     const obj: Record<string, TranslationSchema> = {};
     for (const { code } of languages) {
+      console.log('Fetching file: ', fileName, ' for locale: ', code);
+
       const response = await onesky.getFile({
         secret,
         apiKey,
@@ -74,8 +76,8 @@ export const getFile: OneSky['getFile'] = async ({
         language: code,
       });
 
-      const parsed = OneSkyFileResponse.parse(JSON.parse(response));
-      obj[code] = parsed.translation;
+      const parsed = TranslationSchema.parse(JSON.parse(response));
+      obj[code] = parsed;
     }
 
     return obj;

@@ -37,26 +37,18 @@ const languageData = {
 const translationData = {
   'main.json': {
     'pt-PT': {
-      translation: {
-        hello: 'Olá',
-      },
+      hello: 'Olá',
     },
     'en-GB': {
-      translation: {
-        hello: 'Hello',
-      },
+      hello: 'Hello',
     },
   },
   'errors.json': {
     'pt-PT': {
-      translation: {
-        failure: 'falha falha',
-      },
+      failure: 'falha falha',
     },
     'en-GB': {
-      translation: {
-        failure: 'Failure',
-      },
+      failure: 'Failure',
     },
   },
 };
@@ -89,18 +81,26 @@ export const nockFile = (cfg: {
   fileName: string;
   apiKey: string;
 }): nock.Scope =>
-  nockOneSky()
-    .get(`//1/projects/${cfg.projectId}/translations/multilingual`)
+{
+  for (const {code} of languageData.data) {
+    nockOneSky()
+    .get(`//1/projects/${cfg.projectId}/translations`)
     .query(
       (obj) =>
         Object.keys(translationData).includes(cfg.fileName) &&
         obj.source_file_name === cfg.fileName &&
-        obj.file_format === 'I18NEXT_MULTILINGUAL_JSON' &&
         obj.api_key === cfg.apiKey &&
+        obj.language === code &&
         !!Number(obj.timestamp) &&
         obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
     )
-    .reply(200, translationData[cfg.fileName as Filename]);
+    .reply(200, translationData[cfg.fileName as Filename][code]);
+
+  }
+
+  return null;
+}
+
 
 export const nockProject = (config: FetchTranslationsConfiguration): void => {
   for (const project of config.projects) {
