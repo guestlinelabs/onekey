@@ -1,14 +1,6 @@
 import { z } from 'zod';
 import onesky from '@brainly/onesky-utils';
-
-const mapValues = <A, B>(
-  r: Record<string, A>,
-  f: (value: A) => B
-): Record<string, B> => {
-  return Object.fromEntries(
-    Object.entries(r).map(([key, value]) => [key, f(value)])
-  );
-};
+import { LanguageInfo } from './fetch-translations';
 
 const OneSkyLanguageInfo = z.object({
   is_ready_to_publish: z.boolean(),
@@ -24,12 +16,7 @@ const OneSkyLanguageResponse = z.object({
 const TranslationSchema = z.record(z.union([z.string(), z.record(z.string())]));
 type TranslationSchema = z.infer<typeof TranslationSchema>;
 
-const OneSkyMultilingualFileResponse = z.record(
-  z.object({ translation: TranslationSchema })
-);
-type OneSkyMultilingualFileResponse = z.infer<
-  typeof OneSkyMultilingualFileResponse
->;
+const OneSkyFileResponse = z.object({ translation: TranslationSchema });
 
 interface TranslationFile {
   [languageCode: string]: TranslationSchema;
@@ -50,6 +37,7 @@ export interface OneSky {
     secret: string;
     projectId: number;
     fileName: string;
+    languages: LanguageInfo[];
   }) => Promise<TranslationFile>;
 }
 
@@ -73,20 +61,27 @@ export const getFile: OneSky['getFile'] = async ({
   secret,
   projectId,
   fileName,
+  languages,
 }) => {
   try {
-    const response = await onesky.getMultilingualFile({
-      secret,
-      apiKey,
-      projectId,
-      fileName,
-      language: 'en_EN',
-      format: 'I18NEXT_MULTILINGUAL_JSON',
-    });
-    const parsed = OneSkyMultilingualFileResponse.parse(JSON.parse(response));
+    const obj: Record<string, TranslationSchema> = {};
+    for (const { code } of languages) {
+      console.log('Fetching file:', fileName,'for locale:', code);
 
-    return mapValues(parsed, (x) => x.translation);
+      const response = await onesky.getFile({
+        secret,
+        apiKey,
+        projectId,
+        fileName,
+        language: code,
+      });
+
+      const parsed = TranslationSchema.parse(JSON.parse(response));
+      obj[code] = parsed;
+    }
+
+    return obj;
   } catch (err) {
-    throw Error(`Error getting OneSky translation: ${err}`);
+    throw Error(`Error getting OneSky translation: ${JSON.stringify(err)}`);
   }
 };

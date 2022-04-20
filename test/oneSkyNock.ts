@@ -35,32 +35,25 @@ const languageData = {
 };
 
 const translationData = {
-  'main.json': {
-    'pt-PT': {
-      translation: {
+    'main.json': {
+      'en-GB': {
+        hello: 'Hello',
+      },
+      'pt-PT': {
         hello: 'Olá',
       },
     },
-    'en-GB': {
-      translation: {
-        hello: 'Hello',
-      },
-    },
-  },
-  'errors.json': {
-    'pt-PT': {
-      translation: {
+    'errors.json': {
+      'pt-PT': {
         failure: 'falha falha',
       },
-    },
-    'en-GB': {
-      translation: {
+      'en-GB': {
         failure: 'Failure',
       },
     },
-  },
 };
 type Filename = keyof typeof translationData;
+type LanguageFileName = keyof typeof translationData[Filename];
 
 const getDevHash = (secret: string, timestamp: number): string =>
   md5(String(timestamp) + secret);
@@ -88,19 +81,24 @@ export const nockFile = (cfg: {
   secret: string;
   fileName: string;
   apiKey: string;
-}): nock.Scope =>
-  nockOneSky()
-    .get(`//1/projects/${cfg.projectId}/translations/multilingual`)
+}): void =>
+{
+  for (const {code} of languageData.data) {
+    nockOneSky()
+    .get(`//1/projects/${cfg.projectId}/translations`)
     .query(
-      (obj) =>
-        Object.keys(translationData).includes(cfg.fileName) &&
+      (obj) => {
+        return Object.keys(translationData).includes(cfg.fileName) &&
         obj.source_file_name === cfg.fileName &&
-        obj.file_format === 'I18NEXT_MULTILINGUAL_JSON' &&
         obj.api_key === cfg.apiKey &&
+        obj.locale === code &&
         !!Number(obj.timestamp) &&
         obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
+      }
     )
-    .reply(200, translationData[cfg.fileName as Filename]);
+    .reply(200, translationData[cfg.fileName as Filename][code as LanguageFileName]);
+  }
+}
 
 export const nockProject = (config: FetchTranslationsConfiguration): void => {
   for (const project of config.projects) {

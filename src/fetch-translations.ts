@@ -19,7 +19,7 @@ const languageCodeMapping: { [key: string]: string } = {
   en: 'en-GB',
   th: 'th-TH',
   nn: 'nn-NO',
-  da: 'da-DK'
+  da: 'da-DK',
 };
 
 export const LanguageInfo = z.object({
@@ -83,15 +83,23 @@ async function getFile({
   secret,
   projectId,
   fileName,
+  languages,
 }: {
   apiKey: string;
   secret: string;
   projectId: number;
   fileName: string;
+  languages: LanguageInfo[];
 }): Promise<{
   [languageCode: string]: TranslationSchema;
 }> {
-  const file = await onesky.getFile({ apiKey, fileName, projectId, secret });
+  const file = await onesky.getFile({
+    apiKey,
+    fileName,
+    projectId,
+    secret,
+    languages,
+  });
 
   return mapKeys(getLanguageCode, file);
 }
@@ -101,16 +109,18 @@ async function getProjectFiles({
   secret,
   projectId,
   files,
+  languages,
 }: {
   apiKey: string;
   secret: string;
   projectId: number;
   files: string[];
+  languages: LanguageInfo[];
 }): Promise<ProjectTranslations> {
   return Object.fromEntries(
     await Promise.all(
       files.map((fileName) =>
-        getFile({ fileName, projectId, apiKey, secret }).then(
+        getFile({ fileName, projectId, apiKey, secret, languages }).then(
           (x) => [fileName, x] as const
         )
       )
@@ -145,7 +155,7 @@ export async function fetchTranslations({
   });
   const translations = await Promise.all(
     projects.map(({ files, id }) =>
-      getProjectFiles({ projectId: id, files, apiKey, secret })
+      getProjectFiles({ projectId: id, files, apiKey, secret, languages })
     )
   );
 

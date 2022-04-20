@@ -13,4 +13,12 @@ declare module '@brainly/onesky-utils' {
     fileName: string;
     format: string;
   }): Promise<string>;
+
+  export function getFile(opts: {
+    language: string;
+    secret: string;
+    apiKey: string;
+    projectId: number;
+    fileName: string;
+  }): Promise<string>;
 }
