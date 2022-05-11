@@ -63,7 +63,7 @@ export function findTranslationKeyType(program: ts.Program): void {
       const isUnionType = typeNode.type.kind === ts.SyntaxKind.UnionType;
       console.log(
         'found it',
-        ((typeNode.type as any) as ts.UnionType).types.length
+        (typeNode.type as any as ts.UnionType).types.length
       );
     }
 
@@ -71,9 +71,10 @@ export function findTranslationKeyType(program: ts.Program): void {
   }
 }
 
-export function isValidTypescript(
-  source: string
-): { isValid: boolean; diagnostics: readonly ts.Diagnostic[] } {
+export function isValidTypescript(source: string): {
+  isValid: boolean;
+  diagnostics: readonly ts.Diagnostic[];
+} {
   const program = createProgram(source);
 
   const emitResult = program.emit();

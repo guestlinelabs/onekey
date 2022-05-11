@@ -2,22 +2,27 @@ import { z } from 'zod';
 import * as onesky from './onesky';
 
 // From: https://stackoverflow.com/questions/38213668/promise-retry-design-patterns
-const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const retryOperation = (operation: () => Promise<TranslationFile>, delay: number, retries: number): Promise<TranslationFile> => new Promise((resolve, reject) => {
-  return operation()
-    .then(resolve)
-    .catch((reason) => {
-      if (retries > 0) {
-        console.log("Attempting to retry fetching translations")
-        return wait(delay)
-          .then(retryOperation.bind(null, operation, delay, retries - 1))
-          .then(resolve)
-          .catch(reject);
-      }
-      return reject(reason);
-    });
-});
+const retryOperation = (
+  operation: () => Promise<TranslationFile>,
+  delay: number,
+  retries: number
+): Promise<TranslationFile> =>
+  new Promise((resolve, reject) => {
+    return operation()
+      .then(resolve)
+      .catch((reason) => {
+        if (retries > 0) {
+          console.log('Attempting to retry fetching translations');
+          return wait(delay)
+            .then(retryOperation.bind(null, operation, delay, retries - 1))
+            .then(resolve)
+            .catch(reject);
+        }
+        return reject(reason);
+      });
+  });
 
 const mapKeys = <A>(
   f: (key: string) => string,
@@ -111,14 +116,18 @@ async function getFile({
 }): Promise<{
   [languageCode: string]: TranslationSchema;
 }> {
-
-  const file = await retryOperation(() => onesky.getFile({
-    apiKey,
-    fileName,
-    projectId,
-    secret,
-    languages,
-  }), 5000, 3)
+  const file = await retryOperation(
+    () =>
+      onesky.getFile({
+        apiKey,
+        fileName,
+        projectId,
+        secret,
+        languages,
+      }),
+    5000,
+    3
+  );
 
   return mapKeys(getLanguageCode, file);
 }

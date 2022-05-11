@@ -35,22 +35,22 @@ const languageData = {
 };
 
 const translationData = {
-    'main.json': {
-      'en-GB': {
-        hello: 'Hello',
-      },
-      'pt-PT': {
-        hello: 'Olá',
-      },
+  'main.json': {
+    'en-GB': {
+      hello: 'Hello',
     },
-    'errors.json': {
-      'pt-PT': {
-        failure: 'falha falha',
-      },
-      'en-GB': {
-        failure: 'Failure',
-      },
+    'pt-PT': {
+      hello: 'Olá',
     },
+  },
+  'errors.json': {
+    'pt-PT': {
+      failure: 'falha falha',
+    },
+    'en-GB': {
+      failure: 'Failure',
+    },
+  },
 };
 type Filename = keyof typeof translationData;
 type LanguageFileName = keyof typeof translationData[Filename];
@@ -81,24 +81,26 @@ export const nockFile = (cfg: {
   secret: string;
   fileName: string;
   apiKey: string;
-}): void =>
-{
-  for (const {code} of languageData.data) {
+}): void => {
+  for (const { code } of languageData.data) {
     nockOneSky()
-    .get(`//1/projects/${cfg.projectId}/translations`)
-    .query(
-      (obj) => {
-        return Object.keys(translationData).includes(cfg.fileName) &&
-        obj.source_file_name === cfg.fileName &&
-        obj.api_key === cfg.apiKey &&
-        obj.locale === code &&
-        !!Number(obj.timestamp) &&
-        obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
-      }
-    )
-    .reply(200, translationData[cfg.fileName as Filename][code as LanguageFileName]);
+      .get(`//1/projects/${cfg.projectId}/translations`)
+      .query((obj) => {
+        return (
+          Object.keys(translationData).includes(cfg.fileName) &&
+          obj.source_file_name === cfg.fileName &&
+          obj.api_key === cfg.apiKey &&
+          obj.locale === code &&
+          !!Number(obj.timestamp) &&
+          obj.dev_hash === getDevHash(cfg.secret, Number(obj.timestamp))
+        );
+      })
+      .reply(
+        200,
+        translationData[cfg.fileName as Filename][code as LanguageFileName]
+      );
   }
-}
+};
 
 export const nockProject = (config: FetchTranslationsConfiguration): void => {
   for (const project of config.projects) {
