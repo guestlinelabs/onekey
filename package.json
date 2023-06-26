@@ -1,6 +1,6 @@
 {
   "name": "@guestlinelabs/onekey",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Utility to download translations from the [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.",
   "bin": {
     "onekey": "lib/cli.js"
@@ -45,7 +45,7 @@
     "typescript": "4.5.5"
   },
   "dependencies": {
-    "@brainly/onesky-utils": "^1.4.1",
+    "@brainly/onesky-utils": "github:guestlinelabs/nodejs-onesky-utils#master",
     "mkdirp": "^1.0.4",
     "yargs": "17.3.1",
     "zod": "^3.14.3"
