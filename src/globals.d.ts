@@ -1,4 +1,4 @@
-declare module '@brainly/onesky-utils' {
+declare module '@guestlinelabs/onesky-utils' {
   export function getLanguages(opts: {
     secret: string;
     apiKey: string;

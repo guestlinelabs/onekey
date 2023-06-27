@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import onesky from '@brainly/onesky-utils';
+import onesky from '@guestlinelabs/onesky-utils';
 import { LanguageInfo } from './fetch-translations';
 
 const OneSkyLanguageInfo = z.object({
