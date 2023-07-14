@@ -20,7 +20,7 @@ const writeJSON = async (
 ): Promise<void> => {
   const pathToFile = path.resolve(folder, fileName);
   const fileContent = JSON.stringify(content, null, 2);
-  const filePrettified = prettier.format(fileContent, {
+  const filePrettified = await prettier.format(fileContent, {
     ...prettierConfig,
     parser: 'json',
   });
@@ -139,7 +139,7 @@ export async function saveKeys({
     fileNames,
     translationsLocalePath,
   });
-  const content = generateKeys({
+  const content = await generateKeys({
     languages,
     prettierConfig,
     translations,
