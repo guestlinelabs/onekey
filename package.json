@@ -1,6 +1,6 @@
 {
   "name": "@guestlinelabs/onekey",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Utility to download translations from the [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.",
   "bin": {
     "onekey": "lib/cli.js"
@@ -26,23 +26,24 @@
     "@types/mkdirp": "1.0.2",
     "@types/nock": "11.1.0",
     "@types/node": "17.0.3",
-    "@types/prettier": "2.4.3",
+    "@types/prettier": "3.0.0",
     "@types/yargs": "17.0.8",
     "@typescript-eslint/eslint-plugin": "5.10.1",
     "@typescript-eslint/parser": "5.10.1",
     "cross-env": "7.0.3",
     "eslint": "8.7.0",
-    "eslint-config-prettier": "8.3.0",
-    "eslint-plugin-prettier": "4.0.0",
     "jest": "27.4.7",
     "md5": "^2.3.0",
     "nock": "13.2.2",
     "node-dev": "7.1.0",
-    "prettier": "^3.0.0",
+    "prettier": "^3.1.0",
     "rimraf": "3.0.2",
     "ts-jest": "27.1.3",
     "ts-node": "10.4.0",
     "typescript": "4.5.5"
+  },
+  "peerDependencies": {
+    "prettier": "2 || 3"
   },
   "dependencies": {
     "@guestlinelabs/onesky-utils": "1.4.2",
