@@ -29,17 +29,20 @@ function transformKeys<T extends Record<string, unknown>>(
 function getFileKeys(
   translations: TranslationSchema
 ): Record<string, string[]> {
-  return Object.entries(translations).reduce((acc, [key, value]) => {
-    return typeof value === 'string'
-      ? { ...acc, [key]: extractTranslationParameters(value) }
-      : {
-          ...acc,
-          ...transformKeys(
-            getFileKeys(value),
-            (nestedKey) => `${key}.${nestedKey}`
-          ),
-        };
-  }, {} as Record<string, string[]>);
+  return Object.entries(translations).reduce(
+    (acc, [key, value]) => {
+      return typeof value === 'string'
+        ? { ...acc, [key]: extractTranslationParameters(value) }
+        : {
+            ...acc,
+            ...transformKeys(
+              getFileKeys(value),
+              (nestedKey) => `${key}.${nestedKey}`
+            ),
+          };
+    },
+    {} as Record<string, string[]>
+  );
 }
 
 function getKeys(
@@ -133,10 +136,10 @@ export async function generateKeys({
     | TranslationKeyWithoutOptions
     | TranslationKeyWithOptions;
   export type Translator = {
-    (key: TranslationKeyWithoutOptions): string;
+    (key: TranslationKeyWithoutOptions, options?: { count: number }): string;
     <T extends TranslationKeyWithOptions>(
       key: T,
-      options: TranslationWithOptions[T]
+      options: TranslationWithOptions[T] & { count?: number }
     ): string;
   };
   `,
