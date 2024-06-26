@@ -1,6 +1,6 @@
 import nock from 'nock';
 import md5 from 'md5';
-import { FetchTranslationsConfiguration } from '../src/fetch-translations';
+import type { FetchTranslationsConfiguration } from '../src/fetch-translations';
 
 const languageData = {
   meta: { status: 200, record_count: 2 },
@@ -53,7 +53,7 @@ const translationData = {
   },
 };
 type Filename = keyof typeof translationData;
-type LanguageFileName = keyof typeof translationData[Filename];
+type LanguageFileName = keyof (typeof translationData)[Filename];
 
 const getDevHash = (secret: string, timestamp: number): string =>
   md5(String(timestamp) + secret);

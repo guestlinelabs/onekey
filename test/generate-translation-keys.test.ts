@@ -1,5 +1,8 @@
-import { LanguageInfo } from '../src/fetch-translations';
-import { generateKeys, Translations } from '../src/generate-translation-keys';
+import type { LanguageInfo } from '../src/fetch-translations';
+import {
+  generateKeys,
+  type Translations,
+} from '../src/generate-translation-keys';
 import { isValidTypescript } from './tsCompiler';
 
 const translations: Translations = {
@@ -23,8 +26,8 @@ const languages: LanguageInfo[] = [
   },
 ];
 
-it.skip('will generate valid typescript code', () => {
-  const source = generateKeys({
+it.skip('will generate valid typescript code', async () => {
+  const source = await generateKeys({
     translations,
     languages,
     prettierConfig: {},
