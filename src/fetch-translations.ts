@@ -94,11 +94,23 @@ async function getLanguages({
 
   return languages
     .filter((language) => language.is_ready_to_publish)
-    .map((language) => ({
-      code: getLanguageCode(language.code),
-      englishName: language.english_name,
-      localName: language.local_name,
-    }));
+    .map((language) => {
+      const localName = (() => {
+        switch (language.local_name) {
+          // For some reason this one in OneSky is left in english
+          case 'Simplified Chinese':
+            return '中文';
+          default:
+            return language.local_name;
+        }
+      })();
+
+      return {
+        code: getLanguageCode(language.code),
+        englishName: language.english_name,
+        localName,
+      };
+    });
 }
 
 async function getFile({
