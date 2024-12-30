@@ -1,6 +1,5 @@
-import { LanguageInfo, TranslationSchema } from './fetch-translations';
 import prettier from 'prettier';
-
+import { LanguageInfo, TranslationSchema } from './types';
 function unique<T>(x: T[]): T[] {
   return [...new Set(x)];
 }
