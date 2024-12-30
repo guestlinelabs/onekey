@@ -55,13 +55,14 @@ const YargsTranslateArguments = z.object({
   prettier: z.string().optional(),
   context: z.string().optional(),
   tone: z.string().optional(),
-  apiUrl: z.string(),
+  apiUrl: z.string().optional(),
   apiKey: z.string().optional(),
 });
 type YargsTranslateArguments = z.infer<typeof YargsTranslateArguments>;
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface TranslateArguments extends Omit<YargsTranslateArguments, 'apiKey'> {
   apiKey: string;
+  apiUrl: string;
 }
 
 const GenerateArguments = z.object({
@@ -94,7 +95,7 @@ function getTranslateArguments(yargsInput: unknown): TranslateArguments {
       prettier: args.prettier,
       context: args.context,
       tone: args.tone ?? 'neutral',
-      apiUrl: args.apiUrl,
+      apiUrl: args.apiUrl ?? readEnv('OPENAI_API_URL'),
       apiKey: args.apiKey ?? readEnv('OPENAI_API_KEY'),
     };
   } catch (err) {
@@ -218,7 +219,8 @@ const yarg = yargs(process.argv.slice(2))
         apiUrl: {
           type: 'string',
           alias: 'u',
-          describe: 'OpenAI API URL',
+          describe:
+            'OpenAI API URL (it can be read from the environment variable OPENAI_API_URL)',
         },
         apiKey: {
           type: 'string',
