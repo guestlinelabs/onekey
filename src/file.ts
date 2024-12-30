@@ -5,13 +5,8 @@ import prettier from 'prettier';
 import { z } from 'zod';
 
 import { generateKeys } from './generate-translation-keys';
-import {
-  Project,
-  fetchTranslations,
-  TranslationSchema,
-  LanguageInfo,
-  TranslationOutput,
-} from './fetch-translations';
+import { Project, fetchTranslations } from './fetch-translations';
+import { LanguageInfo, TranslationOutput, TranslationSchema } from './types';
 
 const writeJSON = async (
   prettierConfig: prettier.Options,

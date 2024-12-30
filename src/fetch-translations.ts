@@ -1,5 +1,11 @@
-import { z } from 'zod';
 import * as onesky from './onesky';
+import {
+  LanguageInfo,
+  ProjectTranslations,
+  TranslationFile,
+  TranslationOutput,
+  TranslationSchema,
+} from './types';
 
 // From: https://stackoverflow.com/questions/38213668/promise-retry-design-patterns
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -44,32 +50,6 @@ const languageCodeMapping: { [key: string]: string } = {
   nn: 'nn-NO',
   da: 'da-DK',
 };
-
-export const LanguageInfo = z.object({
-  code: z.string(),
-  englishName: z.string(),
-  localName: z.string(),
-});
-export type LanguageInfo = z.infer<typeof LanguageInfo>;
-
-export const TranslationSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.record(z.string(), z.string())])
-);
-export type TranslationSchema = z.infer<typeof TranslationSchema>;
-
-interface TranslationFile {
-  [languageCode: string]: TranslationSchema;
-}
-
-export interface ProjectTranslations {
-  [fileName: string]: TranslationFile;
-}
-
-export interface TranslationOutput {
-  languages: LanguageInfo[];
-  translations: ReadonlyArray<ProjectTranslations>;
-}
 
 function getLanguageCode(code: string): string {
   if (/[a-z]{2}-[A-Z]{2}/.test(code)) {
