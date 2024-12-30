@@ -164,14 +164,14 @@ export async function saveKeys({
 }
 
 export async function saveAiTranslations({
-  out,
+  path,
   prettierConfigPath,
   context,
   tone,
   apiUrl,
   apiKey,
 }: {
-  out: string;
+  path: string;
   prettierConfigPath?: string;
   context?: string;
   tone?: string;
@@ -179,7 +179,7 @@ export async function saveAiTranslations({
   apiKey: string;
 }): Promise<void> {
   const { languages, translations: projectTranslations } = await translate({
-    out,
+    path,
     context,
     tone,
     apiUrl,
@@ -190,6 +190,6 @@ export async function saveAiTranslations({
     languages,
     translations: projectTranslations,
     prettierConfigPath,
-    translationsPath: out,
+    translationsPath: path,
   });
 }

@@ -17,13 +17,13 @@ type GenericTranslations = {
 };
 
 export async function translate(options: {
-  out: string;
+  path: string;
   context?: string;
   tone?: string;
   apiUrl: string;
   apiKey?: string;
 }): Promise<TranslationOutput> {
-  const { out, context, tone, apiUrl, apiKey } = options;
+  const { path: out, context, tone, apiUrl, apiKey } = options;
   const finalApiUrl = apiUrl || process.env.AI_API_URL;
   const finalApiKey = apiKey || process.env.AI_API_KEY;
   const finalTranslationsFolder = out || './translations';

@@ -51,7 +51,7 @@ interface CheckArguments extends Omit<YargsCheckArguments, 'files'> {
 }
 
 const YargsTranslateArguments = z.object({
-  out: z.string(),
+  path: z.string(),
   prettier: z.string().optional(),
   context: z.string().optional(),
   tone: z.string().optional(),
@@ -90,7 +90,7 @@ function getTranslateArguments(yargsInput: unknown): TranslateArguments {
     const args = YargsTranslateArguments.parse(yargsInput);
 
     return {
-      out: args.out,
+      path: args.path,
       prettier: args.prettier,
       context: args.context,
       tone: args.tone ?? 'neutral',
@@ -209,11 +209,11 @@ const yarg = yargs(process.argv.slice(2))
     'Translate files with OpenAI and save them in a folder',
     (yargs) =>
       yargs.options({
-        out: {
+        path: {
           type: 'string',
           demandOption: true,
-          alias: 'o',
-          describe: 'Where to save the translations',
+          alias: 'p',
+          describe: 'Path for the json translations',
         },
         apiUrl: {
           type: 'string',
