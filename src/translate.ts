@@ -1,5 +1,5 @@
-import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
-import { existsSync } from 'node:fs';
+import { readFile, readdir } from 'fs/promises';
+import { ProjectTranslations, TranslationOutput } from './types';
 
 type AiChoiceMessage = {
   content: string;
@@ -16,21 +16,58 @@ type GenericTranslations = {
   [key: string]: string;
 };
 
+export async function translate(options: {
+  out: string;
+  context?: string;
+  tone?: string;
+  apiUrl: string;
+  apiKey?: string;
+}): Promise<TranslationOutput> {
+  const { out, context, tone, apiUrl, apiKey } = options;
+  const finalApiUrl = apiUrl || process.env.AI_API_URL;
+  const finalApiKey = apiKey || process.env.AI_API_KEY;
+  const finalTranslationsFolder = out || './translations';
+  const finalContext = context || '';
+  const finalTone = tone || 'formal';
+
+  if (!finalApiUrl || !finalApiKey) {
+    throw new Error('Missing required parameters: apiUrl or apiKey');
+  }
+
+  const languages = await getFile(`${finalTranslationsFolder}/languages.json`);
+  const defaultLanguage = languages.find(
+    (language: { default: boolean }) => language.default === true
+  );
+
+  if (!defaultLanguage) {
+    throw new Error('No default language found');
+  }
+
+  const translations = await translateViaAi(
+    finalApiUrl,
+    finalApiKey,
+    finalTranslationsFolder,
+    finalContext,
+    finalTone
+  );
+
+  return {
+    languages,
+    translations: [translations],
+  };
+}
+
 export const translateViaAi = async (
   aiUrl: string,
   openAiApiKey: string,
   translationsFolder: string,
   context: string,
   tone: string
-): Promise<void> => {
+): Promise<ProjectTranslations> => {
   const languages = await getFile(`${translationsFolder}/languages.json`);
   const defaultLanguage = languages.find(
     (language: { default: boolean }) => language.default === true
   );
-  if (!defaultLanguage) {
-    console.error('No default language found');
-    return;
-  }
   const otherLanguages = languages.filter(
     (language: { default: boolean }) => language.default !== true
   );
@@ -39,19 +76,28 @@ export const translateViaAi = async (
     `${translationsFolder}/${defaultLanguage.code}`
   );
 
+  const result: ProjectTranslations = {};
+
   for (const file of defaultLanguageFiles) {
     const defaultLanguageFile = await getFile(
       `${translationsFolder}/${defaultLanguage.code}/${file}`
     );
+
+    result[file] = {};
+    result[file][defaultLanguage.code] = defaultLanguageFile;
+
     await Promise.all(
       otherLanguages.map(async (targetLanguage: { code: string }) => {
         console.log(`Translating ${file} to ${targetLanguage.code}`);
 
-        await createDirectoryAndFile(targetLanguage.code, file);
-
-        const targetLanguageFile = await getFile(
-          `${translationsFolder}/${targetLanguage.code}/${file}`
-        );
+        let targetLanguageFile = {};
+        try {
+          targetLanguageFile = await getFile(
+            `${translationsFolder}/${targetLanguage.code}/${file}`
+          );
+        } catch (e) {
+          // File doesn't exist yet, which is fine
+        }
 
         const missingKeys = Object.keys(defaultLanguageFile).filter(
           (key) => !(key in targetLanguageFile)
@@ -63,7 +109,8 @@ export const translateViaAi = async (
           }, {});
 
         const chunks = splitIntoChunks(objectWithOnlyMissingKeys, 100);
-        let result = {};
+        let translatedContent = {};
+
         for (const chunk of chunks) {
           const chunkTranslation = await translateOneSky(
             aiUrl,
@@ -74,19 +121,22 @@ export const translateViaAi = async (
             context,
             tone
           );
-          result = { ...result, ...chunkTranslation };
+          translatedContent = { ...translatedContent, ...chunkTranslation };
         }
-        const mergedResult = { ...targetLanguageFile, ...result };
-        await writeFile(
-          `${translationsFolder}/${targetLanguage.code}/${file}`,
-          JSON.stringify(mergedResult, null, 2)
-        );
+
+        result[file][targetLanguage.code] = {
+          ...targetLanguageFile,
+          ...translatedContent,
+        };
+
         console.log(
           `Finished translating ${file} for ${targetLanguage.code}. ${missingKeys.length} keys added`
         );
       })
     );
   }
+
+  return result;
 };
 
 export const translateOneSky = async (
@@ -183,46 +233,7 @@ function splitIntoChunks(
   return chunks;
 }
 
-async function createDirectoryAndFile(
-  targetLanguageCode: string,
-  file: string
-) {
-  if (!existsSync(`./translations/${targetLanguageCode}/${file}`)) {
-    await mkdir(`./translations/${targetLanguageCode}`, {
-      recursive: true,
-    });
-    await writeFile(`./translations/${targetLanguageCode}/${file}`, '{}');
-    console.log(`Created ${targetLanguageCode}/${file}`);
-  }
-}
-
 async function getFile(path: string) {
   const fileStream = await readFile(path, 'utf-8');
   return JSON.parse(fileStream);
-}
-
-export function translate(options: {
-  out: string;
-  context?: string;
-  tone?: string;
-  apiUrl: string;
-  apiKey?: string;
-}) {
-  const { out, context, tone, apiUrl, apiKey } = options;
-  const finalApiUrl = apiUrl || process.env.AI_API_URL;
-  const finalApiKey = apiKey || process.env.AI_API_KEY;
-  const finalTranslationsFolder = out || './translations';
-  const finalContext = context || '';
-  const finalTone = tone || 'formal';
-  if (!finalApiUrl || !finalApiKey) {
-    throw new Error('Missing required parameters: apiUrl or apiKey');
-  }
-
-  translateViaAi(
-    finalApiUrl,
-    finalApiKey,
-    finalTranslationsFolder,
-    finalContext,
-    finalTone
-  );
 }

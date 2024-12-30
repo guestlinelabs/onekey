@@ -1,12 +1,8 @@
 import path from 'path';
 import { z } from 'zod';
-import {
-  fetchTranslations,
-  LanguageInfo,
-  Project,
-  TranslationSchema,
-} from './fetch-translations';
+import { fetchTranslations, Project } from './fetch-translations';
 import { readJSON } from './file';
+import { LanguageInfo, TranslationSchema } from './types';
 
 export interface CheckTranslationsConfiguration {
   apiKey: string;

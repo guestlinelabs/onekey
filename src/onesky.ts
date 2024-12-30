@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import onesky from '@guestlinelabs/onesky-utils';
-import { LanguageInfo } from './fetch-translations';
-
+import { LanguageInfo } from './types';
 const OneSkyLanguageInfo = z.object({
   is_ready_to_publish: z.boolean(),
   code: z.string(),

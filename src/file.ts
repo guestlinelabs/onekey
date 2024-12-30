@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { generateKeys } from './generate-translation-keys';
 import { Project, fetchTranslations } from './fetch-translations';
 import { LanguageInfo, TranslationOutput, TranslationSchema } from './types';
+import { translate } from './translate';
 
 const writeJSON = async (
   prettierConfig: prettier.Options,
@@ -160,4 +161,35 @@ export async function saveKeys({
   });
 
   await writeFile(outPath, content, 'utf-8');
+}
+
+export async function saveAiTranslations({
+  translationsPath,
+  prettierConfigPath,
+  context,
+  tone,
+  aiApiUrl,
+  aiApiKey,
+}: {
+  translationsPath: string;
+  prettierConfigPath?: string;
+  context?: string;
+  tone?: string;
+  aiApiUrl: string;
+  aiApiKey: string;
+}): Promise<void> {
+  const { languages, translations: projectTranslations } = await translate({
+    out: translationsPath,
+    context,
+    tone,
+    apiUrl: aiApiUrl,
+    apiKey: aiApiKey,
+  });
+
+  return saveTranslations({
+    languages,
+    translations: projectTranslations,
+    prettierConfigPath,
+    translationsPath,
+  });
 }
