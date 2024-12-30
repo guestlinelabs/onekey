@@ -65,6 +65,11 @@ yargs(process.argv.slice(2))
           alias: 'p',
           describe: 'Path for the json translations',
         },
+        baseLocale: {
+          type: 'string',
+          alias: 'l',
+          describe: 'Base locale',
+        },
         apiUrl: {
           type: 'string',
           alias: 'u',
@@ -102,6 +107,7 @@ yargs(process.argv.slice(2))
         apiUrl: args.apiUrl ?? readEnv('OPENAI_API_URL'),
         path: args.path,
         prettierConfigPath: args.prettier,
+        baseLocale: args.baseLocale,
         context: args.context,
         tone: args.tone,
       });

@@ -170,6 +170,7 @@ export async function saveAiTranslations({
   tone,
   apiUrl,
   apiKey,
+  baseLocale,
 }: {
   path: string;
   prettierConfigPath?: string;
@@ -177,6 +178,7 @@ export async function saveAiTranslations({
   tone?: string;
   apiUrl: string;
   apiKey: string;
+  baseLocale?: string;
 }): Promise<void> {
   const { languages, translations: projectTranslations } = await translate({
     path,
@@ -184,6 +186,7 @@ export async function saveAiTranslations({
     tone,
     apiUrl,
     apiKey,
+    baseLocale,
   });
 
   return saveTranslations({

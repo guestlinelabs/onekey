@@ -15,10 +15,17 @@ export type AiResponse = {
 type GenericTranslations = {
   [key: string]: string;
 };
+interface LanguageInfo {
+  code: string;
+  englishName: string;
+  localName: string;
+  default?: boolean;
+}
 
 export async function translate(options: {
   path: string;
   context?: string;
+  baseLocale?: string;
   tone?: string;
   apiUrl: string;
   apiKey?: string;
@@ -33,9 +40,13 @@ export async function translate(options: {
   }
 
   const languages = await getFile(`${finalTranslationsFolder}/languages.json`);
-  const defaultLanguage = languages.find(
-    (language: { default: boolean }) => language.default === true
-  );
+  const defaultLanguage = languages.find((language: LanguageInfo) => {
+    if (options.baseLocale && language.code === options.baseLocale) {
+      return true;
+    }
+
+    return language.default === true;
+  });
 
   if (!defaultLanguage) {
     throw new Error('No default language found');
@@ -45,6 +56,7 @@ export async function translate(options: {
     apiUrl,
     apiKey,
     finalTranslationsFolder,
+    defaultLanguage,
     finalContext,
     finalTone
   );
@@ -59,15 +71,15 @@ export const translateViaAi = async (
   apiUrl: string,
   apiKey: string,
   translationsFolder: string,
+  defaultLanguage: LanguageInfo,
   context: string,
   tone: string
 ): Promise<ProjectTranslations> => {
-  const languages = await getFile(`${translationsFolder}/languages.json`);
-  const defaultLanguage = languages.find(
-    (language: { default: boolean }) => language.default === true
+  const languages = await getFile<LanguageInfo[]>(
+    `${translationsFolder}/languages.json`
   );
   const otherLanguages = languages.filter(
-    (language: { default: boolean }) => language.default !== true
+    (language) => language.code !== defaultLanguage.code
   );
 
   const defaultLanguageFiles = await readdir(
@@ -85,7 +97,7 @@ export const translateViaAi = async (
     result[file][defaultLanguage.code] = defaultLanguageFile;
 
     await Promise.all(
-      otherLanguages.map(async (targetLanguage: { code: string }) => {
+      otherLanguages.map(async (targetLanguage: LanguageInfo) => {
         console.log(`Translating ${file} to ${targetLanguage.code}`);
 
         let targetLanguageFile = {};
@@ -233,7 +245,7 @@ function splitIntoChunks(
   return chunks;
 }
 
-async function getFile(path: string) {
+async function getFile<T = any>(path: string): Promise<T> {
   const fileStream = await readFile(path, 'utf-8');
   return JSON.parse(fileStream);
 }
