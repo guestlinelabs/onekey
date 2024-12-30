@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { z } from 'zod';
 import yargs from 'yargs/yargs';
 import { saveAiTranslations, saveKeys, saveOneSkyTranslations } from './file';
 import { checkTranslations } from './check-translations';
@@ -14,71 +13,6 @@ const readEnv = (key: string): string => {
   return env;
 };
 
-const ValidCommand = z.enum(['fetch', 'generate', 'check', 'translate']);
-type ValidCommand = z.infer<typeof ValidCommand>;
-const ValidYargCommand = z.object({
-  _: z.tuple([ValidCommand]),
-});
-
-const YargsFetchArguments = z.object({
-  out: z.string(),
-  project: z.number(),
-  files: z.string(),
-  prettier: z.string().optional(),
-  secret: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-type YargsFetchArguments = z.infer<typeof YargsFetchArguments>;
-interface FetchArguments extends Omit<YargsFetchArguments, 'files'> {
-  files: string[];
-  secret: string;
-  apiKey: string;
-}
-
-const YargsCheckArguments = z.object({
-  out: z.string(),
-  project: z.number(),
-  files: z.string(),
-  fail: z.boolean(),
-  secret: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-type YargsCheckArguments = z.infer<typeof YargsCheckArguments>;
-interface CheckArguments extends Omit<YargsCheckArguments, 'files'> {
-  files: string[];
-  secret: string;
-  apiKey: string;
-}
-
-const YargsTranslateArguments = z.object({
-  path: z.string(),
-  prettier: z.string().optional(),
-  context: z.string().optional(),
-  tone: z.string().optional(),
-  apiUrl: z.string().optional(),
-  apiKey: z.string().optional(),
-});
-type YargsTranslateArguments = z.infer<typeof YargsTranslateArguments>;
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface TranslateArguments extends Omit<YargsTranslateArguments, 'apiKey'> {
-  apiKey: string;
-  apiUrl: string;
-}
-
-const GenerateArguments = z.object({
-  input: z.string(),
-  prettier: z.string().optional(),
-  locale: z.string().optional(),
-  out: z.string().optional(),
-});
-type GenerateArguments = z.infer<typeof GenerateArguments>;
-
-type Operation =
-  | { command: 'fetch'; args: FetchArguments }
-  | { command: 'generate'; args: GenerateArguments }
-  | { command: 'check'; args: CheckArguments }
-  | { command: 'translate'; args: TranslateArguments };
-
 function getFileNames(input: string): string[] {
   return input
     .split(',')
@@ -86,99 +20,14 @@ function getFileNames(input: string): string[] {
     .map((x) => (x.endsWith('.json') ? x : `${x}.json`));
 }
 
-function getTranslateArguments(yargsInput: unknown): TranslateArguments {
-  try {
-    const args = YargsTranslateArguments.parse(yargsInput);
-
-    return {
-      path: args.path,
-      prettier: args.prettier,
-      context: args.context,
-      tone: args.tone ?? 'neutral',
-      apiUrl: args.apiUrl ?? readEnv('OPENAI_API_URL'),
-      apiKey: args.apiKey ?? readEnv('OPENAI_API_KEY'),
-    };
-  } catch (err) {
-    throw Error('Failure trying to retrieve the arguments');
-  }
-}
-
-function getFetchArguments(yargsInput: unknown): FetchArguments {
-  try {
-    const args = YargsFetchArguments.parse(yargsInput);
-
-    return {
-      files: getFileNames(args.files),
-      out: args.out,
-      prettier: args.prettier,
-      project: args.project,
-      secret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
-      apiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
-    };
-  } catch (err) {
-    throw Error('Failure trying to retrieve the arguments');
-  }
-}
-
-function getCheckArguments(yargsInput: unknown): CheckArguments {
-  try {
-    const args = YargsCheckArguments.parse(yargsInput);
-
-    return {
-      files: getFileNames(args.files),
-      out: args.out,
-      fail: args.fail,
-      project: args.project,
-      secret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
-      apiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
-    };
-  } catch (err) {
-    throw Error('Failure trying to retrieve the arguments');
-  }
-}
-
-function getGenerateArguments(yargsInput: unknown): GenerateArguments {
-  try {
-    const args = GenerateArguments.parse(yargsInput);
-
-    return args;
-  } catch (err) {
-    throw Error('Failure trying to retrieve the arguments');
-  }
-}
-
-function getOperation(yargsInput: unknown): Operation {
-  try {
-    const [command] = ValidYargCommand.parse(yargsInput)._;
-
-    switch (command) {
-      case 'translate':
-        return {
-          command: 'translate',
-          args: getTranslateArguments(yargsInput),
-        };
-      case 'fetch':
-        return {
-          command: 'fetch',
-          args: getFetchArguments(yargsInput),
-        };
-      case 'generate':
-        return {
-          command: 'generate',
-          args: getGenerateArguments(yargsInput),
-        };
-      case 'check':
-        return {
-          command: 'check',
-          args: getCheckArguments(yargsInput),
-        };
-    }
-  } catch (err) {
-    throw Error('Failure trying to retrieve the arguments');
-  }
-}
-
-async function check(args: CheckArguments) {
+async function check(args: {
+  apiKey: string;
+  secret: string;
+  out: string;
+  project: number;
+  files: string[];
+  fail: boolean;
+}) {
   const checks = await checkTranslations({
     apiKey: args.apiKey,
     secret: args.secret,
@@ -203,7 +52,7 @@ async function check(args: CheckArguments) {
   }
 }
 
-const yarg = yargs(process.argv.slice(2))
+yargs(process.argv.slice(2))
   .scriptName('onekey')
   .command(
     'translate',
@@ -246,7 +95,17 @@ const yarg = yargs(process.argv.slice(2))
           description:
             'Tone of the translation, for example: "formal" or "informal"',
         },
-      })
+      }),
+    async (args) => {
+      await saveAiTranslations({
+        apiKey: args.apiKey ?? readEnv('OPENAI_API_KEY'),
+        apiUrl: args.apiUrl ?? readEnv('OPENAI_API_URL'),
+        path: args.path,
+        prettierConfigPath: args.prettier,
+        context: args.context,
+        tone: args.tone,
+      });
+    }
   )
   .command(
     'fetch',
@@ -290,7 +149,16 @@ const yarg = yargs(process.argv.slice(2))
             describe: 'Path for the prettier config',
           },
         })
-        .help()
+        .help(),
+    async (args) => {
+      await saveOneSkyTranslations({
+        oneSkyApiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
+        oneSkySecret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
+        translationsPath: args.out,
+        projects: [{ id: args.project, files: getFileNames(args.files) }],
+        prettierConfigPath: args.prettier,
+      });
+    }
   )
   .command(
     'check',
@@ -335,7 +203,17 @@ const yarg = yargs(process.argv.slice(2))
             describe: 'Fail when there are missing files/keys',
           },
         })
-        .help()
+        .help(),
+    async (args) => {
+      await check({
+        apiKey: args.apiKey ?? readEnv('ONESKY_PUBLIC_KEY'),
+        secret: args.secret ?? readEnv('ONESKY_PRIVATE_KEY'),
+        out: args.out,
+        project: args.project,
+        files: getFileNames(args.files),
+        fail: args.fail,
+      });
+    }
   )
   .command(
     'generate',
@@ -363,50 +241,14 @@ const yarg = yargs(process.argv.slice(2))
           alias: 'l',
           describe: 'Default locale to use',
         },
-      })
-  )
-  .help();
-
-const program = async () => {
-  try {
-    const operation = getOperation(yarg.argv);
-
-    try {
-      switch (operation.command) {
-        case 'translate':
-          await saveAiTranslations(operation.args);
-          break;
-        case 'fetch':
-          await saveOneSkyTranslations({
-            oneSkyApiKey: operation.args.apiKey,
-            oneSkySecret: operation.args.secret,
-            translationsPath: operation.args.out,
-            projects: [
-              { id: operation.args.project, files: operation.args.files },
-            ],
-            prettierConfigPath: operation.args.prettier,
-          });
-          break;
-        case 'check':
-          await check(operation.args);
-          break;
-        case 'generate':
-          await saveKeys({
-            defaultLocale: operation.args.locale || 'en-GB',
-            prettierConfigPath: operation.args.prettier,
-            translationsPath: operation.args.input,
-            translationKeysPath: operation.args.out || operation.args.input,
-          });
-          break;
-      }
-    } catch (err) {
-      console.error(err);
-      process.exit(1);
+      }),
+    async (args) => {
+      await saveKeys({
+        defaultLocale: args.locale || 'en-GB',
+        prettierConfigPath: args.prettier,
+        translationsPath: args.input,
+        translationKeysPath: args.out || args.input,
+      });
     }
-  } catch (err) {
-    console.error((err as Error).message);
-    yarg.showHelp();
-  }
-};
-
-program();
+  )
+  .help().argv;
