@@ -10,6 +10,7 @@ import {
   fetchTranslations,
   TranslationSchema,
   LanguageInfo,
+  TranslationOutput,
 } from './fetch-translations';
 
 const writeJSON = async (
@@ -46,25 +47,14 @@ export const readJSON = async <T extends z.ZodTypeAny>(
 };
 
 export async function saveTranslations({
-  oneSkyApiKey,
-  oneSkySecret,
-  projects,
-  translationsPath,
+  languages,
+  translations: projectTranslations,
   prettierConfigPath,
-}: {
-  projects: Project[];
+  translationsPath,
+}: TranslationOutput & {
   prettierConfigPath?: string;
   translationsPath: string;
-  oneSkySecret: string;
-  oneSkyApiKey: string;
 }): Promise<void> {
-  const { languages, translations: projectTranslations } =
-    await fetchTranslations({
-      apiKey: oneSkyApiKey,
-      projects: projects,
-      secret: oneSkySecret,
-    });
-
   const prettierConfig = await getPrettierConfig(prettierConfigPath);
 
   await mkdirp(translationsPath);
@@ -92,6 +82,34 @@ export async function saveTranslations({
       }
     }
   }
+}
+
+export async function saveOneSkyTranslations({
+  oneSkyApiKey,
+  oneSkySecret,
+  projects,
+  translationsPath,
+  prettierConfigPath,
+}: {
+  projects: Project[];
+  prettierConfigPath?: string;
+  translationsPath: string;
+  oneSkySecret: string;
+  oneSkyApiKey: string;
+}): Promise<void> {
+  const { languages, translations: projectTranslations } =
+    await fetchTranslations({
+      apiKey: oneSkyApiKey,
+      projects: projects,
+      secret: oneSkySecret,
+    });
+
+  return saveTranslations({
+    languages,
+    translations: projectTranslations,
+    prettierConfigPath,
+    translationsPath,
+  });
 }
 
 async function getPrettierConfig(

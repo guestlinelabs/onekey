@@ -66,7 +66,7 @@ export interface ProjectTranslations {
   [fileName: string]: TranslationFile;
 }
 
-export interface TranslationOptions {
+export interface TranslationOutput {
   languages: LanguageInfo[];
   translations: ReadonlyArray<ProjectTranslations>;
 }
@@ -183,7 +183,7 @@ export async function fetchTranslations({
   apiKey,
   secret,
   projects,
-}: FetchTranslationsConfiguration): Promise<TranslationOptions> {
+}: FetchTranslationsConfiguration): Promise<TranslationOutput> {
   if (projects.length === 0) {
     throw Error('You have to at least pass one project to process');
   }

@@ -2,8 +2,9 @@
 
 import { z } from 'zod';
 import yargs from 'yargs/yargs';
-import { saveKeys, saveTranslations } from './file';
+import { saveKeys, saveOneSkyTranslations } from './file';
 import { checkTranslations } from './check-translations';
+import { translate } from './translate';
 
 const readEnv = (key: string): string => {
   const env = process.env[key];
@@ -14,7 +15,7 @@ const readEnv = (key: string): string => {
   return env;
 };
 
-const ValidCommand = z.enum(['fetch', 'generate', 'check']);
+const ValidCommand = z.enum(['fetch', 'generate', 'check', 'translate']);
 type ValidCommand = z.infer<typeof ValidCommand>;
 const ValidYargCommand = z.object({
   _: z.tuple([ValidCommand]),
@@ -50,6 +51,20 @@ interface CheckArguments extends Omit<YargsCheckArguments, 'files'> {
   apiKey: string;
 }
 
+const YargsTranslateArguments = z.object({
+  out: z.string(),
+  files: z.string(),
+  prettier: z.string().optional(),
+  context: z.string().optional(),
+  tone: z.string().optional(),
+  apiUrl: z.string(),
+  apiKey: z.string().optional(),
+});
+type YargsTranslateArguments = z.infer<typeof YargsTranslateArguments>;
+interface TranslateArguments extends Omit<YargsTranslateArguments, 'files'> {
+  files: string[];
+}
+
 const GenerateArguments = z.object({
   input: z.string(),
   prettier: z.string().optional(),
@@ -61,13 +76,32 @@ type GenerateArguments = z.infer<typeof GenerateArguments>;
 type Operation =
   | { command: 'fetch'; args: FetchArguments }
   | { command: 'generate'; args: GenerateArguments }
-  | { command: 'check'; args: CheckArguments };
+  | { command: 'check'; args: CheckArguments }
+  | { command: 'translate'; args: TranslateArguments };
 
 function getFileNames(input: string): string[] {
   return input
     .split(',')
     .map((x) => x.trim())
     .map((x) => (x.endsWith('.json') ? x : `${x}.json`));
+}
+
+function getTranslateArguments(yargsInput: unknown): TranslateArguments {
+  try {
+    const args = YargsTranslateArguments.parse(yargsInput);
+
+    return {
+      files: getFileNames(args.files),
+      out: args.out,
+      prettier: args.prettier,
+      context: args.context,
+      tone: args.tone ?? 'neutral',
+      apiUrl: args.apiUrl,
+      apiKey: args.apiKey ?? readEnv('OPENAI_API_KEY'),
+    };
+  } catch (err) {
+    throw Error('Failure trying to retrieve the arguments');
+  }
 }
 
 function getFetchArguments(yargsInput: unknown): FetchArguments {
@@ -119,6 +153,11 @@ function getOperation(yargsInput: unknown): Operation {
     const [command] = ValidYargCommand.parse(yargsInput)._;
 
     switch (command) {
+      case 'translate':
+        return {
+          command: 'translate',
+          args: getTranslateArguments(yargsInput),
+        };
       case 'fetch':
         return {
           command: 'fetch',
@@ -167,6 +206,48 @@ async function check(args: CheckArguments) {
 
 const yarg = yargs(process.argv.slice(2))
   .scriptName('onekey')
+  .command(
+    'translate',
+    'Translate files with OpenAI and save them in a folder',
+    (yargs) =>
+      yargs.options({
+        out: {
+          type: 'string',
+          demandOption: true,
+          alias: 'o',
+          describe: 'Where to save the translations',
+        },
+        apiUrl: {
+          type: 'string',
+          alias: 'u',
+          describe: 'OpenAI API URL',
+        },
+        apiKey: {
+          type: 'string',
+          alias: 'k',
+          describe:
+            'OpenAI API key (it can be read from the environment variable OPENAI_API_KEY)',
+        },
+        prettier: {
+          type: 'string',
+          alias: 'c',
+          describe: 'Path for the prettier config',
+        },
+        context: {
+          alias: 'x',
+          type: 'string',
+          description:
+            'Context of the translation, for example: "These translations are used in a booking engine for hotel rooms"',
+        },
+        tone: {
+          alias: 't',
+          type: 'string',
+          default: 'neutral',
+          description:
+            'Tone of the translation, for example: "formal" or "informal"',
+        },
+      })
+  )
   .command(
     'fetch',
     'Fetch onesky json files and save them in a folder',
@@ -292,8 +373,11 @@ const program = async () => {
 
     try {
       switch (operation.command) {
+        case 'translate':
+          await translate(operation.args);
+          break;
         case 'fetch':
-          await saveTranslations({
+          await saveOneSkyTranslations({
             oneSkyApiKey: operation.args.apiKey,
             oneSkySecret: operation.args.secret,
             translationsPath: operation.args.out,
