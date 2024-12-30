@@ -2,9 +2,8 @@
 
 import { z } from 'zod';
 import yargs from 'yargs/yargs';
-import { saveKeys, saveOneSkyTranslations } from './file';
+import { saveAiTranslations, saveKeys, saveOneSkyTranslations } from './file';
 import { checkTranslations } from './check-translations';
-import { translate } from './translate';
 
 const readEnv = (key: string): string => {
   const env = process.env[key];
@@ -53,7 +52,6 @@ interface CheckArguments extends Omit<YargsCheckArguments, 'files'> {
 
 const YargsTranslateArguments = z.object({
   out: z.string(),
-  files: z.string(),
   prettier: z.string().optional(),
   context: z.string().optional(),
   tone: z.string().optional(),
@@ -61,8 +59,9 @@ const YargsTranslateArguments = z.object({
   apiKey: z.string().optional(),
 });
 type YargsTranslateArguments = z.infer<typeof YargsTranslateArguments>;
-interface TranslateArguments extends Omit<YargsTranslateArguments, 'files'> {
-  files: string[];
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+interface TranslateArguments extends Omit<YargsTranslateArguments, 'apiKey'> {
+  apiKey: string;
 }
 
 const GenerateArguments = z.object({
@@ -91,7 +90,6 @@ function getTranslateArguments(yargsInput: unknown): TranslateArguments {
     const args = YargsTranslateArguments.parse(yargsInput);
 
     return {
-      files: getFileNames(args.files),
       out: args.out,
       prettier: args.prettier,
       context: args.context,
@@ -374,7 +372,7 @@ const program = async () => {
     try {
       switch (operation.command) {
         case 'translate':
-          await translate(operation.args);
+          await saveAiTranslations(operation.args);
           break;
         case 'fetch':
           await saveOneSkyTranslations({
