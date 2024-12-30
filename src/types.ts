@@ -1,5 +1,28 @@
 import { z } from 'zod';
 
+export type AiChoiceMessage = {
+  content: string;
+};
+
+export type AiChoice = {
+  message: AiChoiceMessage;
+};
+
+export type AiResponse = {
+  id: string;
+  object: string;
+  choices: AiChoice[];
+};
+
+export interface TranslationConfig {
+  apiUrl: string;
+  apiKey: string;
+  targetLanguageCode: string;
+  originalLanguageCode: string;
+  context: string;
+  tone: string;
+}
+
 export const LanguageInfo = z.object({
   code: z.string(),
   englishName: z.string(),

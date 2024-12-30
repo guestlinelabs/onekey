@@ -1,6 +1,5 @@
-import mkdirp from 'mkdirp';
 import path from 'path';
-import { readFile, writeFile, readdir } from 'fs/promises';
+import { readFile, writeFile, readdir, mkdir } from 'fs/promises';
 import prettier from 'prettier';
 import { z } from 'zod';
 
@@ -22,7 +21,7 @@ const writeJSON = async (
     parser: 'json',
   });
 
-  await mkdirp(folder);
+  await mkdir(folder, { recursive: true });
   await writeFile(pathToFile, filePrettified, 'utf-8');
 };
 
@@ -53,7 +52,7 @@ export async function saveTranslations({
 }): Promise<void> {
   const prettierConfig = await getPrettierConfig(prettierConfigPath);
 
-  await mkdirp(translationsPath);
+  await mkdir(translationsPath, { recursive: true });
   await writeJSON(
     prettierConfig,
     translationsPath,
@@ -68,7 +67,7 @@ export async function saveTranslations({
           translationsPath,
           languageCode
         );
-        await mkdirp(translationsLanguagePath);
+        await mkdir(translationsLanguagePath, { recursive: true });
         await writeJSON(
           prettierConfig,
           translationsLanguagePath,
