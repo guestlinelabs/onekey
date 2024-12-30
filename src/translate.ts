@@ -24,13 +24,11 @@ export async function translate(options: {
   apiKey?: string;
 }): Promise<TranslationOutput> {
   const { path: out, context, tone, apiUrl, apiKey } = options;
-  const finalApiUrl = apiUrl || process.env.AI_API_URL;
-  const finalApiKey = apiKey || process.env.AI_API_KEY;
   const finalTranslationsFolder = out || './translations';
   const finalContext = context || '';
   const finalTone = tone || 'formal';
 
-  if (!finalApiUrl || !finalApiKey) {
+  if (!apiUrl || !apiKey) {
     throw new Error('Missing required parameters: apiUrl or apiKey');
   }
 
@@ -44,8 +42,8 @@ export async function translate(options: {
   }
 
   const translations = await translateViaAi(
-    finalApiUrl,
-    finalApiKey,
+    apiUrl,
+    apiKey,
     finalTranslationsFolder,
     finalContext,
     finalTone
@@ -58,8 +56,8 @@ export async function translate(options: {
 }
 
 export const translateViaAi = async (
-  aiUrl: string,
-  openAiApiKey: string,
+  apiUrl: string,
+  apiKey: string,
   translationsFolder: string,
   context: string,
   tone: string
@@ -113,8 +111,8 @@ export const translateViaAi = async (
 
         for (const chunk of chunks) {
           const chunkTranslation = await translateOneSky(
-            aiUrl,
-            openAiApiKey,
+            apiUrl,
+            apiKey,
             targetLanguage.code,
             defaultLanguage.code,
             chunk,
@@ -140,8 +138,8 @@ export const translateViaAi = async (
 };
 
 export const translateOneSky = async (
-  aiUrl: string,
-  aiApiKey: string,
+  apiUrl: string,
+  apiKey: string,
   targetLanguageCode: string,
   originalLanguageCode: string,
   translationRequest: GenericTranslations,
@@ -149,11 +147,13 @@ export const translateOneSky = async (
   tone: string
 ): Promise<GenericTranslations> => {
   try {
-    const response = await fetch(aiUrl, {
+    const completionsUrl = apiUrl.replace(/\/$/, '') + '/chat/completions';
+
+    const response = await fetch(completionsUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': `${aiApiKey}`,
+        'api-key': `${apiKey}`,
       },
       body: JSON.stringify({
         temperature: 1,
