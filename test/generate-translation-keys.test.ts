@@ -1,10 +1,10 @@
 import { expect, it } from "vitest";
-import type { LanguageInfo } from "../src/fetch-translations";
 import {
   type Translations,
   generateKeys,
 } from "../src/generate-translation-keys";
 import { isValidTypescript } from "./tsCompiler";
+import { LanguageInfo } from "../src/types";
 
 const translations: Translations = {
   main: {

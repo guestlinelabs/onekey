@@ -16,7 +16,6 @@ function createProgram(source: string): ts.Program {
 			if (name === filename) {
 				return sourceFile;
 			}
-
 			return defaultCompilerHost.getSourceFile(name, languageVersion);
 		},
 		// eslint-disable-next-line @typescript-eslint/no-empty-function
