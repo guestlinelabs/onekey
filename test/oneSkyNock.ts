@@ -66,7 +66,7 @@ export const nockLanguages = (cfg: {
 	apiKey: string;
 }): nock.Scope =>
 	nockOneSky()
-		.get(`//1/projects/${cfg.projectId}/languages`)
+		.get(`/1/projects/${cfg.projectId}/languages`)
 		.query((obj) => {
 			return (
 				obj.api_key === cfg.apiKey &&
@@ -84,7 +84,7 @@ export const nockFile = (cfg: {
 }): void => {
 	for (const { code } of languageData.data) {
 		nockOneSky()
-			.get(`//1/projects/${cfg.projectId}/translations`)
+			.get(`/1/projects/${cfg.projectId}/translations`)
 			.query((obj) => {
 				return (
 					Object.keys(translationData).includes(cfg.fileName) &&
