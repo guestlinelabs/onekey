@@ -1,19 +1,19 @@
 {
-  "compilerOptions": {
-    "resolveJsonModule": true,
-    "target": "ES2019",
-    "declaration": true,
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "noImplicitAny": true,
-    "strict": true,
-    "moduleResolution": "Node",
-    "strictNullChecks": true,
-    "lib": ["esnext", "dom"],
-    "outDir": "lib",
-    "sourceMap": true,
-    "skipLibCheck": true
-  },
-  "exclude": ["node_modules"],
-  "include": ["src/**/*.ts"]
+	"compilerOptions": {
+		"resolveJsonModule": true,
+		"target": "ES2019",
+		"declaration": true,
+		"module": "commonjs",
+		"esModuleInterop": true,
+		"noImplicitAny": true,
+		"strict": true,
+		"moduleResolution": "Node",
+		"strictNullChecks": true,
+		"lib": ["esnext", "dom"],
+		"outDir": "lib",
+		"sourceMap": true,
+		"skipLibCheck": true
+	},
+	"exclude": ["node_modules"],
+	"include": ["src/**/*.ts"]
 }

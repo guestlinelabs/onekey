@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import onesky from '@guestlinelabs/onesky-utils';
-import { LanguageInfo } from './fetch-translations';
+import onesky from "@guestlinelabs/onesky-utils";
+import { z } from "zod";
+import type { LanguageInfo } from "./fetch-translations";
 
 const OneSkyLanguageInfo = z.object({
   is_ready_to_publish: z.boolean(),
@@ -39,7 +39,7 @@ export interface OneSky {
   }) => Promise<TranslationFile>;
 }
 
-export const getLanguages: OneSky['getLanguages'] = async ({
+export const getLanguages: OneSky["getLanguages"] = async ({
   apiKey,
   secret,
   projectId,
@@ -50,11 +50,11 @@ export const getLanguages: OneSky['getLanguages'] = async ({
 
     return parsed.data;
   } catch (err) {
-    throw Error('Error getting OneSky language info');
+    throw Error("Error getting OneSky language info");
   }
 };
 
-export const getFile: OneSky['getFile'] = async ({
+export const getFile: OneSky["getFile"] = async ({
   apiKey,
   secret,
   projectId,
@@ -64,7 +64,7 @@ export const getFile: OneSky['getFile'] = async ({
   try {
     const obj: Record<string, TranslationSchema> = {};
     for (const { code } of languages) {
-      console.log('Fetching file:', fileName, 'for locale:', code);
+      console.log("Fetching file:", fileName, "for locale:", code);
 
       const response = await onesky.getFile({
         secret,
