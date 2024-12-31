@@ -354,11 +354,12 @@ function buildTranslationPrompt(
 	return [
 		{
 			role: "system",
-			content: `You are an expert in all languages, and you help translate texts from ${config.originalLanguageCode} to ${config.targetLanguageCode}. ${config.context}`,
+			content: `You are a highly skilled translator with expertise in many languages. Your task is to accurately translate from ${config.originalLanguageCode} to ${config.targetLanguageCode} while preserving the meaning, tone, and nuance of the original text. Please maintain proper grammar, spelling, and punctuation in the translated version.`,
 		},
 		{
 			role: "system",
-			content: "Translate only the value, never change the key",
+			content:
+				"Translate only the value, never change the key. Words wrapped between {{}} are variables and should not be translated.",
 		},
 		{
 			role: "system",
