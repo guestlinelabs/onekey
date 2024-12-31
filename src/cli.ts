@@ -2,7 +2,12 @@
 
 import yargs from "yargs/yargs";
 import { checkTranslations } from "./check-translations";
-import { saveAiTranslations, saveKeys, saveOneSkyTranslations } from "./file";
+import {
+  saveAiTranslations,
+  saveKeys,
+  saveOneSkyTranslations,
+  upload,
+} from "./file";
 
 const readEnv = (key: string): string => {
   const env = process.env[key];
@@ -54,6 +59,43 @@ async function check(args: {
 
 yargs(process.argv.slice(2))
   .scriptName("onekey")
+  .command(
+    "upload",
+    "Upload translations to OneSky",
+    (yargs) =>
+      yargs.options({
+        apiKey: {
+          type: "string",
+          alias: "k",
+          describe: "OneSky API key",
+        },
+        secret: {
+          type: "string",
+          alias: "s",
+          describe: "OneSky secret",
+        },
+        project: {
+          type: "number",
+          demandOption: true,
+          alias: "p",
+          describe: "OneSky project id",
+        },
+        input: {
+          type: "string",
+          demandOption: true,
+          alias: "i",
+          describe: "Path for the translations",
+        },
+      }),
+    async (args) => {
+      await upload({
+        apiKey: args.apiKey ?? readEnv("ONESKY_PUBLIC_KEY"),
+        secret: args.secret ?? readEnv("ONESKY_PRIVATE_KEY"),
+        projectId: args.project,
+        translationsPath: args.input,
+      });
+    }
+  )
   .command(
     "translate",
     "Translate files with OpenAI and save them in a folder",

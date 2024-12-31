@@ -39,6 +39,27 @@ export interface OneSky {
   }) => Promise<TranslationFile>;
 }
 
+export async function uploadFile(
+  apiKey: string,
+  secret: string,
+  projectId: number,
+  language: string,
+  fileName: string,
+  translations: TranslationSchema
+) {
+  console.log("Uploading file:", fileName, "for locale:", language);
+  await onesky.postFile({
+    apiKey,
+    secret,
+    projectId,
+    language,
+    fileName,
+    format: "HIERARCHICAL_JSON",
+    content: JSON.stringify(translations),
+    keepStrings: false,
+  });
+}
+
 export const getLanguages: OneSky["getLanguages"] = async ({
   apiKey,
   secret,
