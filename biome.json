@@ -17,6 +17,7 @@
 		"enabled": true
 	},
 	"linter": {
+		"ignore": ["lib/**"],
 		"enabled": true,
 		"rules": {
 			"recommended": true,
