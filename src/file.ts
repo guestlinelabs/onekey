@@ -218,9 +218,18 @@ export async function saveAiTranslations({
 	apiKey: string;
 	baseLocale?: string;
 }): Promise<void> {
+	let contextContent: string | undefined = undefined;
+	if (context) {
+		try {
+			contextContent = await readFile(context, "utf-8");
+		} catch (err) {
+			throw Error(`Error reading context file: ${context}`);
+		}
+	}
+
 	const { languages, translations: projectTranslations } = await translate({
 		path,
-		context,
+		context: contextContent,
 		tone,
 		apiUrl,
 		apiKey,

@@ -340,6 +340,17 @@ function buildTranslationPrompt(
 	config: TranslationConfig,
 	content: GenericTranslations,
 ): Array<{ role: string; content: string }> {
+	const tonePrompt = (() => {
+		switch (config.tone) {
+			case "formal":
+				return `Use ${config.tone} language, be polite and succinct`;
+			case "informal":
+				return `Use ${config.tone} language, be informal and succinct`;
+			default:
+				return `Use ${config.tone} language, be polite and succinct`;
+		}
+	})();
+
 	return [
 		{
 			role: "system",
@@ -351,7 +362,7 @@ function buildTranslationPrompt(
 		},
 		{
 			role: "system",
-			content: `Use ${config.tone} language, be polite and succinct`,
+			content: `${tonePrompt}. Try to keep the length of the translation as close as possible to the original text.`,
 		},
 		{
 			role: "system",
@@ -362,6 +373,12 @@ function buildTranslationPrompt(
 			role: "system",
 			content: `Example of valid responses: Text to translate: { "link_text": "Link text", "invalid_email_error": "Invalid email format" } Original language: "en-GB" Target language: "fr-FR" Response: { "link_text": "Texte du lien", "invalid_email_error": "Format email invalide" }`,
 		},
+		config.context
+			? {
+					role: "system",
+					content: `Here is some additional context for the translations: ${config.context}`,
+				}
+			: undefined,
 		{ role: "user", content: JSON.stringify(content) },
-	];
+	].filter((item) => item !== undefined);
 }
