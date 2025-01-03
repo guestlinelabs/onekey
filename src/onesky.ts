@@ -95,7 +95,7 @@ export const getFile: OneSky["getFile"] = async ({
 				language: code,
 			});
 
-			const parsed = TranslationSchema.parse(JSON.parse(response));
+			const parsed = TranslationSchema.parse(JSON.parse(response || "{}"));
 			obj[code] = parsed;
 		}
 
