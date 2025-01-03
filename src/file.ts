@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { type Project, fetchTranslations } from "./fetch-translations";
 import { generateKeys } from "./generate-translation-keys";
+import * as git from "./git";
 import { translate } from "./translate";
 import {
 	LanguageInfo,
@@ -140,25 +141,57 @@ export async function upload({
 	secret,
 	projectId,
 	translationsPath,
+	untrackedOnly,
 }: {
 	apiKey: string;
 	secret: string;
 	projectId: number;
 	translationsPath: string;
+	untrackedOnly?: boolean;
 }) {
 	const languagesPath = path.resolve(translationsPath, "languages.json");
 	const languages = await readJSON(z.array(LanguageInfo), languagesPath);
+
+	if (untrackedOnly) {
+		if (!(await git.isAvailable())) {
+			throw new Error("Git is not available in the system");
+		}
+		if (!(await git.isRepository(translationsPath))) {
+			throw new Error("Not a git repository");
+		}
+	}
 
 	const translations: Record<string, Record<string, TranslationSchema>> = {};
 
 	for (const language of languages) {
 		const languagePath = path.resolve(translationsPath, language.code);
-		const fileNames = await readdir(languagePath);
+		let fileNames: string[];
+
+		if (untrackedOnly) {
+			fileNames = (await git.getUntrackedJsonFiles(languagePath))
+				.filter((file) => file.startsWith(languagePath))
+				.map((file) => path.basename(file));
+
+			if (fileNames.length === 0) {
+				continue;
+			}
+		} else {
+			fileNames = await readdir(languagePath);
+		}
+
 		const languageTranslations = await readTranslations({
 			fileNames,
 			translationsLocalePath: languagePath,
 		});
-		translations[language.code] = languageTranslations;
+
+		if (Object.keys(languageTranslations).length > 0) {
+			translations[language.code] = languageTranslations;
+		}
+	}
+
+	if (Object.keys(translations).length === 0) {
+		console.log("No files to upload");
+		return;
 	}
 
 	await uploadTranslations({

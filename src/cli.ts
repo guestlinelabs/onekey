@@ -86,6 +86,12 @@ yargs(process.argv.slice(2))
 					alias: "i",
 					describe: "Path for the translations",
 				},
+				untracked: {
+					type: "boolean",
+					alias: "u",
+					default: false,
+					describe: "Upload only files with uncommitted changes",
+				},
 			}),
 		async (args) => {
 			await upload({
@@ -93,6 +99,7 @@ yargs(process.argv.slice(2))
 				secret: args.secret ?? readEnv("ONESKY_PRIVATE_KEY"),
 				projectId: args.project,
 				translationsPath: args.input,
+				untrackedOnly: args.untracked,
 			});
 		},
 	)
