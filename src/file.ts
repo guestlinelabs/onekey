@@ -141,13 +141,15 @@ export async function upload({
 	secret,
 	projectId,
 	translationsPath,
-	untrackedOnly,
+	untrackedOnly = false,
+	keepStrings = false,
 }: {
 	apiKey: string;
 	secret: string;
 	projectId: number;
 	translationsPath: string;
 	untrackedOnly?: boolean;
+	keepStrings?: boolean;
 }) {
 	const languagesPath = path.resolve(translationsPath, "languages.json");
 	const languages = await readJSON(z.array(LanguageInfo), languagesPath);
@@ -199,6 +201,7 @@ export async function upload({
 		secret,
 		projectId,
 		translations,
+		keepStrings,
 	});
 }
 

@@ -46,6 +46,7 @@ export async function uploadFile(
 	language: string,
 	fileName: string,
 	translations: TranslationSchema,
+	keepStrings: boolean,
 ) {
 	console.log("Uploading file:", fileName, "for locale:", language);
 	await onesky.postFile({
@@ -56,7 +57,7 @@ export async function uploadFile(
 		fileName,
 		format: "HIERARCHICAL_JSON",
 		content: JSON.stringify(translations),
-		keepStrings: false,
+		keepStrings,
 	});
 }
 

@@ -6,6 +6,7 @@ interface UploadTranslationsConfiguration {
 	secret: string;
 	projectId: number;
 	translations: Record<string, Record<string, TranslationSchema>>;
+	keepStrings: boolean;
 }
 
 export async function uploadTranslations({
@@ -13,6 +14,7 @@ export async function uploadTranslations({
 	secret,
 	projectId,
 	translations: fileTranslations,
+	keepStrings,
 }: UploadTranslationsConfiguration): Promise<void> {
 	for (const [language, translations] of Object.entries(fileTranslations)) {
 		for (const [fileName, translation] of Object.entries(translations)) {
@@ -23,6 +25,7 @@ export async function uploadTranslations({
 				language,
 				fileName,
 				translation,
+				keepStrings,
 			);
 		}
 	}

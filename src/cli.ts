@@ -92,6 +92,12 @@ yargs(process.argv.slice(2))
 					default: false,
 					describe: "Upload only files with uncommitted changes",
 				},
+				keepStrings: {
+					type: "boolean",
+					alias: "r",
+					default: false,
+					describe: "Keep strings that are not translated",
+				},
 			}),
 		async (args) => {
 			await upload({
@@ -100,6 +106,7 @@ yargs(process.argv.slice(2))
 				projectId: args.project,
 				translationsPath: args.input,
 				untrackedOnly: args.untracked,
+				keepStrings: args.keepStrings,
 			});
 		},
 	)
