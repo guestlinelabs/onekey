@@ -118,9 +118,7 @@ async function translateViaAi({
 	stats?: boolean;
 	state: State;
 }): Promise<ProjectTranslations> {
-	const languages = await loadJsonFile<LanguageInfo[]>(
-		`${translationsFolder}/languages.json`,
-	);
+	const languages = getLanguagesInfo(state);
 	const otherLanguages = languages.filter(
 		(lang) => lang.code !== defaultLanguage.code,
 	);
