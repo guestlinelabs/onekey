@@ -1,5 +1,12 @@
 import { readFile, readdir } from "node:fs/promises";
-import { type State, diffState, loadState, saveState, touch } from "./state";
+import {
+	type State,
+	diffState,
+	getLanguagesInfo,
+	loadState,
+	saveState,
+	touch,
+} from "./state";
 import type {
 	AiResponse,
 	LanguageInfo,
@@ -36,11 +43,10 @@ export async function translate(options: {
 	}
 
 	const statePath = `${path}/state.json`;
-	const languages = await loadJsonFile<LanguageInfo[]>(
-		`${path}/languages.json`,
-	);
+	const state = await loadState(statePath, options.baseLocale ?? "en-GB");
+
+	const languages = getLanguagesInfo(state);
 	const defaultLanguage = findDefaultLanguage(languages, options.baseLocale);
-	const state = await loadState(statePath, defaultLanguage.code);
 
 	if (stats) {
 		const diffs = diffState(state);

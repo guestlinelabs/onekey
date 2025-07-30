@@ -1,29 +1,35 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
+import languages from "./language-codes.json";
+import type { LanguageInfo } from "./types";
 
 export type NamespacedKey = string;
 
-export interface KeyMeta {
-	lastModified: string;
-}
+export const KeyMeta = z.object({
+	lastModified: z.string(),
+});
+export type KeyMeta = z.infer<typeof KeyMeta>;
 
-export interface State {
-	baseLocale: string;
-	modified: Record<string, Record<NamespacedKey, KeyMeta>>;
-}
-
-const StateSchema = z.object({
+export const State = z.object({
 	baseLocale: z.string(),
-	modified: z.record(
-		z.string(),
-		z.record(
-			z.string(),
-			z.object({
-				lastModified: z.string(),
-			}),
-		),
+	locales: z.array(
+		z.object({
+			code: z.string(),
+			englishName: z.string(),
+			localName: z.string(),
+			keys: z.record(z.string(), KeyMeta),
+		}),
 	),
 });
+export type State = z.infer<typeof State>;
+
+export function getLanguagesInfo(state: State): LanguageInfo[] {
+	return state.locales.map((locale) => ({
+		code: locale.code,
+		englishName: locale.englishName,
+		localName: locale.localName,
+	}));
+}
 
 export async function loadState(
 	statePath: string,
@@ -31,11 +37,11 @@ export async function loadState(
 ): Promise<State> {
 	try {
 		const content = await readFile(statePath, "utf-8");
-		return StateSchema.parse(JSON.parse(content));
+		return State.parse(JSON.parse(content));
 	} catch {
 		return {
 			baseLocale,
-			modified: {},
+			locales: [],
 		};
 	}
 }
@@ -53,10 +59,19 @@ export function touch(
 	key: NamespacedKey,
 	date = new Date(),
 ): void {
-	if (!state.modified[locale]) {
-		state.modified[locale] = {};
+	const localeEntry = state.locales.find((loc) => loc.code === locale);
+	if (!localeEntry) {
+		state.locales.push({
+			code: locale,
+			englishName:
+				languages.find((lang) => lang.code === locale)?.englishName ?? "",
+			localName:
+				languages.find((lang) => lang.code === locale)?.localName ?? "",
+			keys: { [key]: { lastModified: date.toISOString() } },
+		});
+	} else {
+		localeEntry.keys[key] = { lastModified: date.toISOString() };
 	}
-	state.modified[locale][key] = { lastModified: date.toISOString() };
 }
 
 export function isStale(
@@ -65,8 +80,12 @@ export function isStale(
 	locale: string,
 	key: NamespacedKey,
 ): boolean {
-	const baseEntry = state.modified[baseLocale]?.[key];
-	const localeEntry = state.modified[locale]?.[key];
+	const baseEntry = state.locales.find((loc) => loc.code === baseLocale)?.keys[
+		key
+	];
+	const localeEntry = state.locales.find((loc) => loc.code === locale)?.keys[
+		key
+	];
 
 	if (!baseEntry) return false;
 	if (!localeEntry) return true;
@@ -87,19 +106,22 @@ export function diffState(state: State): Array<{
 		localeTs: string | "missing";
 	}> = [];
 
-	for (const [locale, keys] of Object.entries(state.modified)) {
-		if (locale === state.baseLocale) continue;
+	const baseLocaleEntry = state.locales.find(
+		(loc) => loc.code === state.baseLocale,
+	);
+	if (!baseLocaleEntry) return diffs;
 
-		for (const [key, meta] of Object.entries(
-			state.modified[state.baseLocale] || {},
-		)) {
-			if (isStale(state, state.baseLocale, locale, key)) {
-				const localeEntry = state.modified[locale]?.[key];
+	for (const localeEntry of state.locales) {
+		if (localeEntry.code === state.baseLocale) continue;
+
+		for (const [key, meta] of Object.entries(baseLocaleEntry.keys)) {
+			if (isStale(state, state.baseLocale, localeEntry.code, key)) {
+				const localeKeyEntry = localeEntry.keys[key];
 				diffs.push({
-					locale,
+					locale: localeEntry.code,
 					key,
 					baseTs: meta.lastModified,
-					localeTs: localeEntry ? localeEntry.lastModified : "missing",
+					localeTs: localeKeyEntry ? localeKeyEntry.lastModified : "missing",
 				});
 			}
 		}

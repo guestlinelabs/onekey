@@ -40,7 +40,6 @@ Options:
 
 - Scans your base locale translation files
 - Creates `state.json` with timestamp tracking for all translation keys
-- Creates `languages.json` if it doesn't exist
 - Sets up the foundation for translation freshness tracking
 
 **Example:**
