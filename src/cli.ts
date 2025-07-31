@@ -116,19 +116,9 @@ yargs(process.argv.slice(2))
 	.command(
 		"status",
 		"Check translation status and report stale translations",
-		(yargs) =>
-			yargs.options({
-				path: {
-					type: "string",
-					demandOption: true,
-					alias: "p",
-					describe: "Path to translations directory",
-				},
-			}),
-		async (args) => {
-			const exitCode = await checkStatus({
-				translationsPath: args.path,
-			});
+		(yargs) => null,
+		async () => {
+			const exitCode = await checkStatus();
 			process.exit(exitCode);
 		},
 	)
