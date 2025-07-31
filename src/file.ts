@@ -112,7 +112,16 @@ export async function initializeState({
 
 export async function checkStatus(): Promise<number> {
 	try {
-		const state = await loadState();
+		const state = await loadState().catch((err) => {
+			if (err instanceof Error && err.message.includes("ENOENT")) {
+				return undefined;
+			}
+			throw err;
+		});
+		if (!state) {
+			console.log("No state found for this project");
+			return 1;
+		}
 		const diffs = diffState(state);
 
 		if (diffs.length === 0) {
