@@ -39,7 +39,7 @@ Options:
 **What it does:**
 
 - Scans your base locale translation files
-- Creates `state.json` with timestamp tracking for all translation keys
+- Creates `oneKeyState.json` with timestamp tracking for all translation keys
 - Sets up the foundation for translation freshness tracking
 
 **Example:**
@@ -61,7 +61,7 @@ Options:
 
 **What it does:**
 
-- Loads `state.json` and compares timestamps across locales
+- Loads `oneKeyState.json` and compares timestamps across locales
 - Reports keys where translations are stale (base locale newer than translated locale)
 - Reports missing translations
 - Exits with code 1 if issues are found (perfect for CI/CD)
@@ -132,11 +132,11 @@ Options:
 
 ## Local State Tracking
 
-OneKey uses a local `state.json` file to track translation freshness and manage the translation workflow without external dependencies.
+OneKey uses a local `oneKeyState.json` file to track translation freshness and manage the translation workflow without external dependencies.
 
 ### State File Structure
 
-The `state.json` file is created in your translations directory and tracks when each translation key was last modified:
+The `oneKeyState.json` file is created in your translations directory and tracks when each translation key was last modified:
 
 ```json
 {
@@ -182,7 +182,7 @@ Loads the translation state from a JSON file.
 ```typescript
 import { loadState } from "@guestlinelabs/onekey";
 
-const state = await loadState("./translations/state.json", "en-GB");
+const state = await loadState("./translations/oneKeyState.json", "en-GB");
 console.log(state.baseLocale); // 'en-GB'
 console.log(state.modified); // Timestamp data
 ```
@@ -194,7 +194,7 @@ Saves the translation state to a JSON file.
 ```typescript
 import { saveState } from "@guestlinelabs/onekey";
 
-await saveState("./translations/state.json", state);
+await saveState("./translations/oneKeyState.json", state);
 ```
 
 #### touch(state, locale, key, date?)
@@ -427,7 +427,7 @@ Expected directory structure:
 
 ```
 translations/
-├── state.json             # Translation state tracking
+├── oneKeyState.json             # Translation state tracking
 ├── languages.json         # Language definitions
 ├── en-GB/                # Base language
 │   ├── main.json
@@ -440,7 +440,7 @@ translations/
 
 ### State File Format
 
-The `state.json` file structure:
+The `oneKeyState.json` file structure:
 
 ```json
 {
@@ -584,7 +584,7 @@ async function setupTranslations() {
   }
 
   // 3. Show stale translation statistics
-  const state = await loadState("./translations/state.json", "en-GB");
+  const state = await loadState("./translations/oneKeyState.json", "en-GB");
   const diffs = diffState(state);
   console.log(`Found ${diffs.length} stale translations`);
 
@@ -653,7 +653,7 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
 
 - **Removed Commands**: `fetch`, `upload`, `check` commands no longer exist
 - **Removed Dependencies**: OneSky integration completely removed
-- **New State System**: Requires `state.json` for translation tracking
+- **New State System**: Requires `oneKeyState.json` for translation tracking
 - **Updated API**: Programmatic APIs changed to support local state
 
 ### Migration Steps
