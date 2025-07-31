@@ -13,7 +13,6 @@ import type {
 	ProjectTranslations,
 	TranslationConfig,
 	TranslationOutput,
-	TranslationSchema,
 } from "./types";
 
 type GenericTranslations = Record<string, string>;
@@ -42,8 +41,7 @@ export async function translate(options: {
 		throw new Error("Missing required parameters: apiUrl or apiKey");
 	}
 
-	const statePath = `${path}/oneKeyState.json`;
-	const state = await loadState(statePath);
+	const state = await loadState();
 	if (!state) {
 		throw new Error("No state found for this project");
 	}
@@ -79,7 +77,7 @@ export async function translate(options: {
 		state,
 	});
 
-	await saveState(statePath, state);
+	await saveState(state);
 
 	return { languages, translations: [translations] };
 }
