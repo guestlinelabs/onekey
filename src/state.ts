@@ -11,7 +11,9 @@ export const KeyMeta = z.object({
 export type KeyMeta = z.infer<typeof KeyMeta>;
 
 export const State = z.object({
+	version: z.enum(["0"]),
 	baseLocale: z.string(),
+	translationsPath: z.string(),
 	locales: z.array(
 		z.object({
 			code: z.string(),
@@ -31,19 +33,36 @@ export function getLanguagesInfo(state: State): LanguageInfo[] {
 	}));
 }
 
-export async function loadState(
-	statePath: string,
-	baseLocale: string,
-): Promise<State> {
+export async function loadState(statePath: string): Promise<State | undefined> {
 	try {
 		const content = await readFile(statePath, "utf-8");
 		return State.parse(JSON.parse(content));
-	} catch {
-		return {
-			baseLocale,
-			locales: [],
-		};
+	} catch (err) {
+		if (err instanceof Error && err.message.includes("ENOENT")) {
+			return undefined;
+		}
+		throw err;
 	}
+}
+
+export async function loadOrCreateState({
+	statePath,
+	baseLocale,
+	translationsPath,
+}: {
+	statePath: string;
+	baseLocale: string;
+	translationsPath: string;
+}): Promise<State> {
+	const state = await loadState(statePath);
+	if (state) return state;
+
+	return {
+		version: "0",
+		baseLocale,
+		translationsPath,
+		locales: [],
+	};
 }
 
 export async function saveState(
