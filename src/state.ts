@@ -6,6 +6,7 @@ import type { LanguageInfo } from "./types";
 export type NamespacedKey = string;
 
 export const KeyMeta = z.object({
+	current: z.string().optional(),
 	lastModified: z.string(),
 });
 export type KeyMeta = z.infer<typeof KeyMeta>;
@@ -77,8 +78,15 @@ export function touch(
 	locale: string,
 	key: NamespacedKey,
 	date = new Date(),
+	current?: string,
 ): void {
 	const localeEntry = state.locales.find((loc) => loc.code === locale);
+
+	const newMeta: KeyMeta = {
+		lastModified: date.toISOString(),
+		...(current !== undefined ? { current } : {}),
+	};
+
 	if (!localeEntry) {
 		state.locales.push({
 			code: locale,
@@ -86,10 +94,32 @@ export function touch(
 				languages.find((lang) => lang.code === locale)?.englishName ?? "",
 			localName:
 				languages.find((lang) => lang.code === locale)?.localName ?? "",
-			keys: { [key]: { lastModified: date.toISOString() } },
+			keys: { [key]: newMeta },
 		});
-	} else {
-		localeEntry.keys[key] = { lastModified: date.toISOString() };
+		return;
+	}
+
+	const existingMeta = localeEntry.keys[key];
+
+	if (!existingMeta) {
+		// Key does not exist yet for this locale
+		localeEntry.keys[key] = newMeta;
+		return;
+	}
+
+	if (current !== undefined && existingMeta.current !== current) {
+		// Translation changed – update timestamp and stored translation
+		localeEntry.keys[key] = {
+			...existingMeta,
+			current,
+			lastModified: date.toISOString(),
+		};
+	} else if (current === undefined) {
+		// No translation supplied – just bump the timestamp
+		localeEntry.keys[key] = {
+			...existingMeta,
+			lastModified: date.toISOString(),
+		};
 	}
 }
 

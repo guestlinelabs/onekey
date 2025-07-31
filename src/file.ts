@@ -120,9 +120,9 @@ export async function initializeState({
 			const content = await readJSON(TranslationSchema, filePath);
 			const namespace = fileName.replace(".json", "");
 
-			const flatKeys = flattenKeys(content, namespace);
-			for (const key of flatKeys) {
-				touch(state, baseLocale, key, now);
+			const flatEntries = flattenKeysWithValues(content, namespace);
+			for (const { key, value } of flatEntries) {
+				touch(state, baseLocale, key, now, value);
 				for (const locale of otherLocales) {
 					touch(state, locale, key, now);
 				}
@@ -187,6 +187,27 @@ function flattenKeys(obj: any, namespace: string, prefix = ""): string[] {
 	}
 
 	return keys;
+}
+
+function flattenKeysWithValues(
+	obj: any,
+	namespace: string,
+	prefix = "",
+): Array<{ key: string; value: string }> {
+	const entries: Array<{ key: string; value: string }> = [];
+
+	for (const [key, value] of Object.entries(obj)) {
+		const fullKey = prefix ? `${prefix}.${key}` : key;
+		const namespacedKey = `${namespace}.${fullKey}`;
+
+		if (typeof value === "string") {
+			entries.push({ key: namespacedKey, value });
+		} else if (typeof value === "object" && value !== null) {
+			entries.push(...flattenKeysWithValues(value, namespace, fullKey));
+		}
+	}
+
+	return entries;
 }
 
 async function getPrettierConfig(
