@@ -7,7 +7,7 @@ import { generateKeys } from "./generate-translation-keys";
 import {
   diffState,
   getLanguagesInfo,
-  loadOrCreateState,
+  createState,
   loadState,
   saveState,
   touch,
@@ -57,13 +57,18 @@ export async function initializeState({
 }): Promise<void> {
   const statePath = path.join(process.cwd(), "oneKeyState.json");
 
-  if (await loadState(statePath)) {
+  const existingState = await loadState().catch((err) => {
+    if (err instanceof Error && err.message.includes("ENOENT")) {
+      return undefined;
+    }
+    throw err;
+  });
+  if (existingState) {
     console.log("State already exists for this project");
     return;
   }
 
-  const state = await loadOrCreateState({
-    statePath,
+  const state = await createState({
     baseLocale,
     translationsPath,
   });
@@ -97,7 +102,7 @@ export async function initializeState({
       }
     }
 
-    await saveState(statePath, state);
+    await saveState(state);
 
     console.log(`Initialized state tracking for ${baseLocale}`);
   } catch (error) {
@@ -106,17 +111,8 @@ export async function initializeState({
 }
 
 export async function checkStatus(): Promise<number> {
-  const statePath = path.join(process.cwd(), "oneKeyState.json");
-
   try {
-    const state = await loadState(statePath);
-    if (!state) {
-      console.log(
-        "No state found for this project. Try running `onekey init` first."
-      );
-      return 0;
-    }
-
+    const state = await loadState();
     const diffs = diffState(state);
 
     if (diffs.length === 0) {
@@ -200,18 +196,21 @@ async function readTranslations(config: {
 }
 
 export async function saveKeys({
-  translationsPath,
   translationKeysPath,
-  defaultLocale = "en-GB",
   prettierConfigPath,
 }: {
-  translationsPath: string;
-  translationKeysPath: string;
-  defaultLocale: string;
+  translationKeysPath?: string;
   prettierConfigPath?: string;
 }): Promise<void> {
+  const state = await loadState();
+  const translationsPath = path.join(process.cwd(), state.translationsPath);
+  const defaultLocale = state.baseLocale;
+
   const translationsLocalePath = path.resolve(translationsPath, defaultLocale);
-  const outPath = path.resolve(translationKeysPath, "translation.ts");
+  const outPath = path.resolve(
+    translationKeysPath ?? translationsPath,
+    "translation.ts"
+  );
 
   const fileNames = await readdir(translationsLocalePath);
   const prettierConfig = await getPrettierConfig(prettierConfigPath);
@@ -220,10 +219,6 @@ export async function saveKeys({
     fileNames,
     translationsLocalePath,
   });
-  const state = await loadState(translationsPath);
-  if (!state) {
-    throw new Error("No state found for this project");
-  }
   const languages = getLanguagesInfo(state);
 
   const content = await generateKeys({
@@ -237,23 +232,19 @@ export async function saveKeys({
 }
 
 export async function saveAiTranslations({
-  path: translationsPath,
   prettierConfigPath,
   context,
   tone,
   apiUrl,
   apiKey,
-  baseLocale,
   updateAll,
   stats,
 }: {
-  path: string;
   prettierConfigPath?: string;
   context?: string;
   tone?: string;
   apiUrl: string;
   apiKey: string;
-  baseLocale?: string;
   updateAll?: boolean;
   stats?: boolean;
 }): Promise<void> {
@@ -265,6 +256,9 @@ export async function saveAiTranslations({
       throw Error(`Error reading context file: ${context}`);
     }
   }
+  const state = await loadState();
+  const translationsPath = path.join(process.cwd(), state.translationsPath);
+  const baseLocale = state.baseLocale;
 
   const { languages, translations: projectTranslations } = await translate({
     path: translationsPath,
