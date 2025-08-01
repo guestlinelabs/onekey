@@ -1,16 +1,16 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	type State,
 	type KeyMeta,
-	loadState,
+	type State,
 	createState,
-	saveState,
-	touch,
-	isStale,
 	diffState,
 	getLanguagesInfo,
+	isStale,
+	loadState,
+	saveState,
+	touch,
 } from "../src/state";
 
 // Mock fs/promises
@@ -65,8 +65,14 @@ describe("State Management", () => {
 
 			const result = await loadState();
 
-			expect(mockPathJoin).toHaveBeenCalledWith(process.cwd(), "oneKeyState.json");
-			expect(mockReadFile).toHaveBeenCalledWith("/mock/path/oneKeyState.json", "utf-8");
+			expect(mockPathJoin).toHaveBeenCalledWith(
+				process.cwd(),
+				"oneKeyState.json",
+			);
+			expect(mockReadFile).toHaveBeenCalledWith(
+				"/mock/path/oneKeyState.json",
+				"utf-8",
+			);
 			expect(result).toEqual(mockState);
 		});
 
@@ -112,7 +118,10 @@ describe("State Management", () => {
 
 			await saveState(mockState);
 
-			expect(mockPathJoin).toHaveBeenCalledWith(process.cwd(), "oneKeyState.json");
+			expect(mockPathJoin).toHaveBeenCalledWith(
+				process.cwd(),
+				"oneKeyState.json",
+			);
 			expect(mockWriteFile).toHaveBeenCalledWith(
 				"/mock/path/oneKeyState.json",
 				JSON.stringify(mockState, null, 2),
