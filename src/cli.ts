@@ -101,6 +101,19 @@ yargs(process.argv.slice(2))
 		},
 	)
 	.command(
+		"check",
+		false,
+		(yargs) => null,
+		async () => {
+			console.warn(
+				"The 'check' command is deprecated. Please use 'status' instead.",
+			);
+			await checkStatus();
+		},
+		[],
+		true,
+	)
+	.command(
 		"status",
 		"Check translation status and report stale translations",
 		(yargs) => null,
