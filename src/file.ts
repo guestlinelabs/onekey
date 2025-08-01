@@ -131,14 +131,16 @@ export async function checkStatus(): Promise<number> {
 
 		try {
 			// Get base language files to know what files should exist in other languages
-			const baseFileNames = await readdir(baseLocalePath).catch(async () => {
-				await mkdir(baseLocalePath, { recursive: true });
-				return [];
-			});
+			const baseFileNames = await readdir(baseLocalePath)
+				.then((files) => files.filter((f) => f.endsWith(".json")))
+				.catch(async () => {
+					await mkdir(baseLocalePath, { recursive: true });
+					return [];
+				});
 
 			// Check for new keys in base language
 			let hasNewKeys = false;
-			for (const fileName of baseFileNames.filter((f) => f.endsWith(".json"))) {
+			for (const fileName of baseFileNames) {
 				const filePath = path.join(baseLocalePath, fileName);
 				const content = await readJSON(TranslationSchema, filePath);
 				const namespace = fileName.replace(".json", "");
@@ -160,15 +162,22 @@ export async function checkStatus(): Promise<number> {
 			}
 
 			// Check for new languages and their keys
-			const allLocales = await readdir(translationsPath).catch(async () => {
-				await mkdir(translationsPath, { recursive: true });
-				return [];
-			});
+			const allLocales = await readdir(translationsPath, {
+				withFileTypes: true,
+			})
+				.then((files) =>
+					files
+						.filter((f) => f.isDirectory())
+						.map((f) => f.name)
+						.filter((f) => f !== baseLocale),
+				)
+				.catch(async () => {
+					await mkdir(translationsPath, { recursive: true });
+					return [];
+				});
 
 			let hasNewLanguages = false;
 			for (const locale of allLocales) {
-				if (locale === baseLocale) continue; // Skip base locale
-
 				const localeEntry = state.locales.find((loc) => loc.code === locale);
 				if (!localeEntry) {
 					// This is a new language - initialize it
@@ -178,9 +187,16 @@ export async function checkStatus(): Promise<number> {
 
 				// Check if this language has the same files as base language
 				const localePath = path.join(translationsPath, locale);
-				const localeFileNames = await readdir(localePath).catch(
+				// Attempt to read the files for this locale. If the directory does not
+				// exist we treat it as having no files. In tests the mocked readdir can
+				// return undefined, so we also coerce that case to an empty array so the
+				// rest of the logic can continue safely.
+				let localeFileNames = await readdir(localePath).catch(
 					() => [] as string[],
 				);
+				if (!Array.isArray(localeFileNames)) {
+					localeFileNames = [];
+				}
 
 				for (const fileName of baseFileNames.filter((f) =>
 					f.endsWith(".json"),
@@ -227,7 +243,7 @@ export async function checkStatus(): Promise<number> {
 			);
 		}
 
-		const diffs = diffState(state);
+		const diffs = diffState(state) ?? [];
 
 		if (diffs.length === 0) {
 			console.log("All translations are up to date.");
