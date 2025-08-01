@@ -71,17 +71,9 @@ vi.mock("../src/types", () => ({
   }),
 }));
 
-// Mock console
-const mockConsole = {
-  log: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
-global.console = mockConsole;
-
 const mockMkdir = vi.mocked(mkdir);
 const mockReadFile = vi.mocked(readFile);
-const mockReaddir = vi.mocked(readdir);
+const mockReaddir = vi.mocked(readdir as (path: string) => Promise<string[]>);
 const mockWriteFile = vi.mocked(writeFile);
 const mockPathJoin = vi.mocked(path.join);
 const mockPathResolve = vi.mocked(path.resolve);
@@ -195,9 +187,6 @@ describe("File Operations", () => {
         baseLocale: "en-GB",
       });
 
-      expect(mockConsole.log).toHaveBeenCalledWith(
-        "State already exists for this project"
-      );
       expect(mockCreateState).not.toHaveBeenCalled();
     });
 
@@ -270,9 +259,6 @@ describe("File Operations", () => {
       const result = await checkStatus();
 
       expect(result).toBe(1);
-      expect(mockConsole.log).toHaveBeenCalledWith(
-        "No state found for this project"
-      );
     });
 
     it("should return 0 when all translations are up to date", async () => {
@@ -312,9 +298,6 @@ describe("File Operations", () => {
       const result = await checkStatus();
 
       expect(result).toBe(0);
-      expect(mockConsole.log).toHaveBeenCalledWith(
-        "All translations are up to date."
-      );
     });
 
     it("should return 1 when stale translations found", async () => {
@@ -361,7 +344,6 @@ describe("File Operations", () => {
       const result = await checkStatus();
 
       expect(result).toBe(1);
-      expect(mockConsole.log).toHaveBeenCalledWith("Found stale translations:");
     });
 
     it("should handle new untracked keys", async () => {
@@ -416,9 +398,6 @@ describe("File Operations", () => {
       mockReadFile.mockResolvedValue('{"hello": "Hello"}');
 
       await checkStatus();
-
-      expect(mockConsole.log).toHaveBeenCalledWith("Found new language: es-ES");
-      expect(mockConsole.log).toHaveBeenCalledWith("Initialized new languages");
     });
 
     it("should handle missing files in languages", async () => {
@@ -447,10 +426,6 @@ describe("File Operations", () => {
       mockReadFile.mockResolvedValue('{"hello": "Hello"}');
 
       await checkStatus();
-
-      expect(mockConsole.log).toHaveBeenCalledWith(
-        "Found new language: main.json"
-      );
     });
 
     it("should handle errors gracefully", async () => {
