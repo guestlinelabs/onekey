@@ -122,6 +122,111 @@ export async function checkStatus(): Promise<number> {
 			console.log("No state found for this project");
 			return 1;
 		}
+
+		// Check for new untracked keys in base language and initialize them
+		const translationsPath = path.join(process.cwd(), state.translationsPath);
+		const baseLocale = state.baseLocale;
+		const baseLocalePath = path.join(translationsPath, baseLocale);
+		const now = new Date();
+
+		try {
+			// Get base language files to know what files should exist in other languages
+			const baseFileNames = await readdir(baseLocalePath).catch(async () => {
+				await mkdir(baseLocalePath, { recursive: true });
+				return [];
+			});
+
+			// Check for new keys in base language
+			let hasNewKeys = false;
+			for (const fileName of baseFileNames.filter((f) => f.endsWith(".json"))) {
+				const filePath = path.join(baseLocalePath, fileName);
+				const content = await readJSON(TranslationSchema, filePath);
+				const namespace = fileName.replace(".json", "");
+
+				const flatEntries = flattenKeysWithValues(content, namespace);
+				for (const { key, value } of flatEntries) {
+					// Check if this key exists in the state for the base locale
+					const baseLocaleEntry = state.locales.find(
+						(loc) => loc.code === baseLocale,
+					);
+					const existingKey = baseLocaleEntry?.keys[key];
+
+					if (!existingKey) {
+						// This is a new untracked key - initialize it
+						touch(state, baseLocale, key, now, value);
+						hasNewKeys = true;
+					}
+				}
+			}
+
+			// Check for new languages and their keys
+			const allLocales = await readdir(translationsPath).catch(async () => {
+				await mkdir(translationsPath, { recursive: true });
+				return [];
+			});
+
+			let hasNewLanguages = false;
+			for (const locale of allLocales) {
+				if (locale === baseLocale) continue; // Skip base locale
+
+				const localeEntry = state.locales.find((loc) => loc.code === locale);
+				if (!localeEntry) {
+					// This is a new language - initialize it
+					hasNewLanguages = true;
+					console.log(`Found new language: ${locale}`);
+				}
+
+				// Check if this language has the same files as base language
+				const localePath = path.join(translationsPath, locale);
+				const localeFileNames = await readdir(localePath).catch(
+					() => [] as string[],
+				);
+
+				for (const fileName of baseFileNames.filter((f) =>
+					f.endsWith(".json"),
+				)) {
+					const namespace = fileName.replace(".json", "");
+
+					// Check if this file exists in the new language
+					if (!localeFileNames.includes(fileName)) {
+						console.log(`Missing file ${fileName} in language ${locale}`);
+						continue;
+					}
+
+					// Read the file and check for keys
+					const filePath = path.join(localePath, fileName);
+					const content = await readJSON(TranslationSchema, filePath);
+					const flatEntries = flattenKeysWithValues(content, namespace);
+
+					for (const { key, value } of flatEntries) {
+						// Check if this key exists in the state for this locale
+						const existingKey = localeEntry?.keys?.[key];
+
+						if (!existingKey) {
+							// This is a new key for this locale - initialize it
+							touch(state, locale, key, now, value);
+							hasNewKeys = true;
+						}
+					}
+				}
+			}
+
+			// If we found new keys or languages, save the updated state
+			if (hasNewKeys || hasNewLanguages) {
+				await saveState(state);
+				if (hasNewKeys) {
+					console.log("Initialized new untracked keys");
+				}
+				if (hasNewLanguages) {
+					console.log("Initialized new languages");
+				}
+			}
+		} catch (error) {
+			console.warn(
+				`Warning: Could not check for new keys in base language: ${error}`,
+			);
+		}
+
 		const diffs = diffState(state);
 
 		if (diffs.length === 0) {
