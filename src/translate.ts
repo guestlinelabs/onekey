@@ -24,6 +24,7 @@ export async function translate(options: {
 	tone?: string;
 	apiUrl: string;
 	apiKey?: string;
+	model?: string;
 	updateAll?: boolean;
 	stats?: boolean;
 }): Promise<TranslationOutput> {
@@ -33,6 +34,7 @@ export async function translate(options: {
 		tone = "formal",
 		apiUrl,
 		apiKey,
+		model,
 		updateAll = false,
 		stats = false,
 	} = options;
@@ -70,6 +72,7 @@ export async function translate(options: {
 		defaultLanguage,
 		apiUrl,
 		apiKey,
+		model,
 		context,
 		tone,
 		updateAll,
@@ -101,6 +104,7 @@ function findDefaultLanguage(
 async function translateViaAi({
 	apiUrl,
 	apiKey,
+	model,
 	translationsFolder,
 	defaultLanguage,
 	context,
@@ -113,6 +117,7 @@ async function translateViaAi({
 	defaultLanguage: LanguageInfo;
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
 	updateAll?: boolean;
@@ -137,6 +142,7 @@ async function translateViaAi({
 			otherLanguages,
 			apiUrl,
 			apiKey,
+			model,
 			context,
 			tone,
 			updateAll,
@@ -154,6 +160,7 @@ async function translateFile({
 	otherLanguages,
 	apiUrl,
 	apiKey,
+	model,
 	context,
 	tone,
 	updateAll,
@@ -165,6 +172,7 @@ async function translateFile({
 	otherLanguages: LanguageInfo[];
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
 	updateAll?: boolean;
@@ -195,6 +203,7 @@ async function translateFile({
 				defaultContent: defaultLanguageContent,
 				apiUrl,
 				apiKey,
+				model,
 				context,
 				tone,
 				updateAll,
@@ -215,6 +224,7 @@ async function translateToLanguage({
 	defaultContent,
 	apiUrl,
 	apiKey,
+	model,
 	context,
 	tone,
 	updateAll,
@@ -228,6 +238,7 @@ async function translateToLanguage({
 	defaultContent: GenericTranslations;
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
 	updateAll?: boolean;
@@ -258,6 +269,7 @@ async function translateToLanguage({
 		defaultLanguage,
 		apiUrl,
 		apiKey,
+		model,
 		context,
 		tone,
 	});
@@ -293,6 +305,7 @@ async function translateOneSky(
 				"api-key": config.apiKey,
 			},
 			body: JSON.stringify({
+				model: config.model,
 				temperature: 1,
 				max_tokens: 4096,
 				user: `translation-automation-${config.originalLanguageCode}-${config.targetLanguageCode}`,
@@ -358,6 +371,7 @@ async function translateMissingContent({
 	defaultLanguage,
 	apiUrl,
 	apiKey,
+	model,
 	context,
 	tone,
 }: {
@@ -366,6 +380,7 @@ async function translateMissingContent({
 	defaultLanguage: LanguageInfo;
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
 }): Promise<GenericTranslations> {
@@ -377,6 +392,7 @@ async function translateMissingContent({
 			{
 				apiUrl,
 				apiKey,
+				model,
 				targetLanguageCode: targetLanguage.code,
 				originalLanguageCode: defaultLanguage.code,
 				context,

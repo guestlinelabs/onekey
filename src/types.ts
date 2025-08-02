@@ -17,6 +17,7 @@ export type AiResponse = {
 export interface TranslationConfig {
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	targetLanguageCode: string;
 	originalLanguageCode: string;
 	context: string;

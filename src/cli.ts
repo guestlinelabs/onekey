@@ -82,6 +82,12 @@ yargs(process.argv.slice(2))
 						describe:
 							"OpenAI API key (it can be read from the environment variable OPENAI_API_KEY)",
 					},
+					apiModel: {
+						type: "string",
+						alias: "m",
+						describe:
+							"OpenAI API model (it can be read from the environment variable OPENAI_API_MODEL)",
+					},
 					prettier: {
 						type: "string",
 						alias: "c",
@@ -116,12 +122,14 @@ yargs(process.argv.slice(2))
 					"Translate stale or missing keys and print statistics",
 				),
 		async (args) => {
-			const readEnv = (key: string): string => {
+			function readEnv(key: string): string;
+			function readEnv(key: string, optional: true): string | undefined;
+			function readEnv(key: string, optional = false) {
 				const env = process.env[key];
-				if (!env)
+				if (!env && !optional)
 					throw Error(`Could not find key ${key} in the environment variables`);
 				return env;
-			};
+			}
 
 			// Sync state first to ensure we have the latest state and translation.ts
 			await syncState();
@@ -129,6 +137,7 @@ yargs(process.argv.slice(2))
 			await saveAiTranslations({
 				apiKey: args.apiKey ?? readEnv("OPENAI_API_KEY"),
 				apiUrl: args.apiUrl ?? readEnv("OPENAI_API_URL"),
+				apiModel: args.apiModel ?? readEnv("OPENAI_API_MODEL", true),
 				prettierConfigPath: args.prettier,
 				context: args.context,
 				tone: args.tone,

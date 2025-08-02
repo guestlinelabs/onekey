@@ -384,6 +384,7 @@ export async function saveAiTranslations({
 	tone,
 	apiUrl,
 	apiKey,
+	apiModel,
 	updateAll,
 	stats,
 }: {
@@ -392,6 +393,7 @@ export async function saveAiTranslations({
 	tone?: string;
 	apiUrl: string;
 	apiKey: string;
+	apiModel?: string;
 	updateAll?: boolean;
 	stats?: boolean;
 }): Promise<void> {
@@ -413,6 +415,7 @@ export async function saveAiTranslations({
 		tone,
 		apiUrl,
 		apiKey,
+		model: apiModel,
 		baseLocale,
 		updateAll,
 		stats,

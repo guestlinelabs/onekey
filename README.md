@@ -95,8 +95,6 @@ Usage: onekey status [options]
 onekey status
 ```
 
-
-
 ### Translate with AI
 
 Uses AI to automatically translate your content into different languages with intelligent state tracking. Only translates stale or missing translations by default.
@@ -109,6 +107,7 @@ Options:
   -l, --baseLocale [OPTIONAL] Base locale (defaults to language marked as default in languages.json)
   -u, --apiUrl     OpenAI API URL (it can be read from environment variable OPENAI_API_URL)
   -k, --apiKey     OpenAI API key (it can be read from environment variable OPENAI_API_KEY)
+  -m, --model      OpenAI API model (it can be read from environment variable OPENAI_API_MODEL)
   -c, --prettier   [OPTIONAL] Path for the prettier config
   -x, --context    [OPTIONAL] File with additional context for the translations
   -t, --tone       [OPTIONAL] Tone of the translation (formal/informal/neutral, defaults to neutral)
@@ -138,6 +137,7 @@ Options:
 
 - `OPENAI_API_URL` - OpenAI API endpoint (fallback for --apiUrl)
 - `OPENAI_API_KEY` - OpenAI API key (fallback for --apiKey)
+- `OPENAI_API_MODEL` - OpenAI API model (fallback for --apiModel)
 
 ## Local State Tracking
 
@@ -566,45 +566,45 @@ jobs:
 
 ```typescript
 import {
-	initializeState,
-	checkStatus,
-	syncState,
-	translate,
-	loadState,
-	diffState,
+  initializeState,
+  checkStatus,
+  syncState,
+  translate,
+  loadState,
+  diffState,
 } from "@guestlinelabs/onekey";
 
 async function setupTranslations() {
-	// 1. Initialize state tracking
-	await initializeState({
-		translationsPath: "./translations",
-		baseLocale: "en-GB",
-	});
+  // 1. Initialize state tracking
+  await initializeState({
+    translationsPath: "./translations",
+    baseLocale: "en-GB",
+  });
 
-	// 2. Sync state and generate translation.ts
-	const exitCode = await syncState();
+  // 2. Sync state and generate translation.ts
+  const exitCode = await syncState();
 
-	if (exitCode === 0) {
-		console.log("All translations up to date!");
-		return;
-	}
+  if (exitCode === 0) {
+    console.log("All translations up to date!");
+    return;
+  }
 
-	// 3. Show stale translation statistics
-	const state = await loadState();
-	const diffs = diffState(state);
-	console.log(`Found ${diffs.length} stale translations`);
+  // 3. Show stale translation statistics
+  const state = await loadState();
+  const diffs = diffState(state);
+  console.log(`Found ${diffs.length} stale translations`);
 
-	// 4. Translate stale keys only (syncState is called internally)
-	await translate({
-		path: "./translations",
-		apiUrl: process.env.OPENAI_API_URL!,
-		apiKey: process.env.OPENAI_API_KEY!,
-		context: "Hotel booking application",
-		tone: "formal",
-		stats: true,
-	});
+  // 4. Translate stale keys only (syncState is called internally)
+  await translate({
+    path: "./translations",
+    apiUrl: process.env.OPENAI_API_URL!,
+    apiKey: process.env.OPENAI_API_KEY!,
+    context: "Hotel booking application",
+    tone: "formal",
+    stats: true,
+  });
 
-	console.log("Translations updated successfully!");
+  console.log("Translations updated successfully!");
 }
 ```
 
