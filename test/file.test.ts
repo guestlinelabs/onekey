@@ -9,6 +9,7 @@ import {
 	initializeState,
 	saveAiTranslations,
 	saveKeys,
+	syncState,
 } from "../src/file";
 import { generateKeys } from "../src/generate-translation-keys";
 import {
@@ -109,6 +110,7 @@ describe("File Operations", () => {
 			mockLoadState.mockRejectedValue(new Error("ENOENT: no such file"));
 			mockCreateState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
@@ -127,6 +129,7 @@ describe("File Operations", () => {
 			expect(mockCreateState).toHaveBeenCalledWith({
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 			});
 			expect(mockSaveState).toHaveBeenCalled();
 			// touch is called for each key in each locale, but the mock might not be called
@@ -139,6 +142,7 @@ describe("File Operations", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			});
 
@@ -154,6 +158,7 @@ describe("File Operations", () => {
 			mockLoadState.mockRejectedValue(new Error("ENOENT: no such file"));
 			mockCreateState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
@@ -182,6 +187,7 @@ describe("File Operations", () => {
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
+				generateKeys: false,
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["en-GB", "es-ES"])
@@ -224,6 +230,7 @@ describe("File Operations", () => {
 		it("should return 0 when all translations are up to date", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [
@@ -264,6 +271,7 @@ describe("File Operations", () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
 				baseLocale: "en-GB",
+				generateKeys: false,
 				translationsPath: "public/translations",
 				locales: [
 					{
@@ -311,6 +319,7 @@ describe("File Operations", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [
 					{
 						code: "en-GB",
@@ -328,7 +337,7 @@ describe("File Operations", () => {
 			);
 			mockSaveState.mockResolvedValue(undefined);
 
-			await checkStatus();
+			await syncState();
 
 			// The implementation might not call saveState if the keys are already tracked
 			// or if the flow doesn't reach that point
@@ -338,6 +347,7 @@ describe("File Operations", () => {
 		it("should handle new languages", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [
@@ -363,6 +373,7 @@ describe("File Operations", () => {
 		it("should handle missing files in languages", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [
@@ -393,12 +404,13 @@ describe("File Operations", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			});
 			mockReaddir.mockRejectedValue(new Error("Permission denied"));
 			mockDiffState.mockReturnValue([]);
 
-			const result = await checkStatus();
+			const result = await syncState();
 
 			expect(result).toBe(0); // Returns 0 when no diffs, even with errors
 			// The error might not be caught in the warning block depending on the flow
@@ -410,6 +422,7 @@ describe("File Operations", () => {
 		it("should save translation keys successfully", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [
@@ -445,6 +458,7 @@ describe("File Operations", () => {
 		it("should use default paths when not provided", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
@@ -471,6 +485,7 @@ describe("File Operations", () => {
 		it("should save AI translations successfully", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
@@ -517,6 +532,7 @@ describe("File Operations", () => {
 		it("should handle missing context file", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],
@@ -535,6 +551,7 @@ describe("File Operations", () => {
 		it("should work without context file", async () => {
 			mockLoadState.mockResolvedValue({
 				version: "0",
+				generateKeys: false,
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
 				locales: [],

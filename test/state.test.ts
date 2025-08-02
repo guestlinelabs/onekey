@@ -46,6 +46,7 @@ describe("State Management", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [
 					{
 						code: "en-GB",
@@ -73,7 +74,10 @@ describe("State Management", () => {
 				"/mock/path/oneKeyState.json",
 				"utf-8",
 			);
-			expect(result).toEqual(mockState);
+			expect(result).toEqual({
+				...mockState,
+				generateKeys: true,
+			});
 		});
 
 		it("should throw error when file read fails", async () => {
@@ -100,6 +104,7 @@ describe("State Management", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			});
 		});
@@ -111,6 +116,7 @@ describe("State Management", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			};
 
@@ -134,6 +140,7 @@ describe("State Management", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			};
 
@@ -149,6 +156,7 @@ describe("State Management", () => {
 				version: "0",
 				baseLocale: "en-GB",
 				translationsPath: "public/translations",
+				generateKeys: true,
 				locales: [],
 			};
 

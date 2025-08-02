@@ -5,7 +5,7 @@ import {
 	checkStatus,
 	initializeState,
 	saveAiTranslations,
-	saveKeys,
+	syncState,
 } from "./file";
 
 yargs(process.argv.slice(2))
@@ -15,9 +15,9 @@ yargs(process.argv.slice(2))
 			"\nUsage: $0 <command> [options]\n" +
 			"\nTypical workflow:\n" +
 			"  1. init      Scan base locale and create oneKeyState.json\n" +
-			"  2. status    Report missing or stale translations (CI-friendly)\n" +
-			"  3. translate Use OpenAI to update stale keys only\n" +
-			"  4. generate  Generate type-safe translation keys (translation.ts)\n",
+			"  2. sync      Sync state, generate translation.ts, and report stale translations\n" +
+			"  3. status    Read-only check for stale or missing translations (CI-friendly)\n" +
+			"  4. translate Use OpenAI to update stale keys only\n",
 	)
 	.recommendCommands()
 	.demandCommand(
@@ -42,15 +42,25 @@ yargs(process.argv.slice(2))
 						default: "en-GB",
 						describe: "Base locale for translations",
 					},
+					"no-generate-keys": {
+						type: "boolean",
+						default: false,
+						describe: "Disable automatic generation of translation.ts",
+					},
 				})
 				.example(
 					"$0 init -p ./translations -l en-GB",
 					"Initialize state tracking",
+				)
+				.example(
+					"$0 init -p ./translations --no-generate-keys",
+					"Initialize without translation.ts generation",
 				),
 		async (args) => {
 			await initializeState({
 				translationsPath: args.path,
 				baseLocale: args.baseLocale,
+				generateKeys: !args["no-generate-keys"],
 			});
 		},
 	)
@@ -113,6 +123,9 @@ yargs(process.argv.slice(2))
 				return env;
 			};
 
+			// Sync state first to ensure we have the latest state and translation.ts
+			await syncState();
+
 			await saveAiTranslations({
 				apiKey: args.apiKey ?? readEnv("OPENAI_API_KEY"),
 				apiUrl: args.apiUrl ?? readEnv("OPENAI_API_URL"),
@@ -138,37 +151,22 @@ yargs(process.argv.slice(2))
 		true,
 	)
 	.command(
-		"status",
-		"Check translation status and report stale translations",
-		(yargs) => yargs.example("$0 status", "Report translation status"),
+		"sync",
+		"Sync state, generate translation.ts, and report stale translations",
+		(yargs) =>
+			yargs.example("$0 sync", "Sync state and generate translation.ts"),
 		async () => {
-			const exitCode = await checkStatus();
+			const exitCode = await syncState();
 			process.exit(exitCode);
 		},
 	)
 	.command(
-		"generate",
-		"Generate typescript keys for the translations",
-		(yargs) =>
-			yargs
-				.options({
-					out: {
-						type: "string",
-						alias: "o",
-						describe: "Where to save the translation keys",
-					},
-					prettier: {
-						type: "string",
-						alias: "c",
-						describe: "Path for the prettier config",
-					},
-				})
-				.example("$0 generate", "Generate TypeScript key types"),
-		async (args) => {
-			await saveKeys({
-				prettierConfigPath: args.prettier,
-				translationKeysPath: args.out,
-			});
+		"status",
+		"Read-only check for stale or missing translations (CI-friendly)",
+		(yargs) => yargs.example("$0 status", "Report translation status"),
+		async () => {
+			const exitCode = await checkStatus();
+			process.exit(exitCode);
 		},
 	)
 	.epilog("Docs: https://github.com/guestlinelabs/onekey#readme")

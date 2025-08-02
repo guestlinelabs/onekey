@@ -16,6 +16,7 @@ export const State = z.object({
 	version: z.enum(["0"]),
 	baseLocale: z.string(),
 	translationsPath: z.string(),
+	generateKeys: z.boolean().default(true),
 	locales: z.array(
 		z.object({
 			code: z.string(),
@@ -44,14 +45,17 @@ export async function loadState(): Promise<State> {
 export async function createState({
 	baseLocale,
 	translationsPath,
+	generateKeys = true,
 }: {
 	baseLocale: string;
 	translationsPath: string;
+	generateKeys?: boolean;
 }): Promise<State> {
 	return {
 		version: "0",
 		baseLocale,
 		translationsPath,
+		generateKeys,
 		locales: [],
 	};
 }

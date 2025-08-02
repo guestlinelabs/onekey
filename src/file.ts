@@ -18,9 +18,11 @@ import { readJSON, writeJSON } from "./utils";
 export async function initializeState({
 	translationsPath,
 	baseLocale,
+	generateKeys = true,
 }: {
 	translationsPath: string;
 	baseLocale: string;
+	generateKeys?: boolean;
 }): Promise<void> {
 	const statePath = path.join(process.cwd(), "oneKeyState.json");
 
@@ -38,6 +40,7 @@ export async function initializeState({
 	const state = await createState({
 		baseLocale,
 		translationsPath,
+		generateKeys,
 	});
 	const otherLocales = (
 		await readdir(translationsPath).catch(async () => {
@@ -77,7 +80,7 @@ export async function initializeState({
 	}
 }
 
-export async function checkStatus(): Promise<number> {
+export async function syncState(): Promise<number> {
 	try {
 		const state = await loadState().catch((err) => {
 			if (err instanceof Error && err.message.includes("ENOENT")) {
@@ -208,6 +211,53 @@ export async function checkStatus(): Promise<number> {
 			console.warn(
 				`Warning: Could not check for new keys in base language: ${error}`,
 			);
+		}
+
+		// Generate translation keys if enabled
+		if (state.generateKeys !== false) {
+			try {
+				await saveKeys({
+					translationKeysPath: undefined,
+					prettierConfigPath: undefined,
+				});
+				console.log("Generated translation.ts");
+			} catch (error) {
+				console.warn(`Warning: Could not generate translation keys: ${error}`);
+			}
+		}
+
+		const diffs = diffState(state) ?? [];
+
+		if (diffs.length === 0) {
+			console.log("All translations are up to date.");
+			return 0;
+		}
+
+		console.log("Found stale translations:");
+		for (const diff of diffs) {
+			console.log(
+				`[${diff.locale}] ${diff.key}: base=${diff.baseTs}, locale=${diff.localeTs}`,
+			);
+		}
+
+		return 1;
+	} catch (error) {
+		console.error(`Error syncing state: ${error}`);
+		return 1;
+	}
+}
+
+export async function checkStatus(): Promise<number> {
+	try {
+		const state = await loadState().catch((err) => {
+			if (err instanceof Error && err.message.includes("ENOENT")) {
+				return undefined;
+			}
+			throw err;
+		});
+		if (!state) {
+			console.log("No state found for this project");
+			return 1;
 		}
 
 		const diffs = diffState(state) ?? [];

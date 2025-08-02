@@ -5,5 +5,6 @@ export {
 	saveAiTranslations,
 	initializeState,
 	checkStatus,
+	syncState,
 } from "./file";
 export { loadState, saveState, touch, isStale, diffState } from "./state";

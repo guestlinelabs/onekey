@@ -32,8 +32,9 @@ Sets up local state tracking for translation freshness management. This is the f
 Usage: onekey init [options]
 
 Options:
-  -p, --path       Path to translations directory (required)
-  -l, --baseLocale Base locale for translations (defaults to en-GB)
+  -p, --path              Path to translations directory (required)
+  -l, --baseLocale        Base locale for translations (defaults to en-GB)
+  --no-generate-keys      Disable automatic generation of translation.ts
 ```
 
 **What it does:**
@@ -41,22 +42,43 @@ Options:
 - Scans your base locale translation files
 - Creates `oneKeyState.json` with timestamp tracking for all translation keys
 - Sets up the foundation for translation freshness tracking
+- Configures automatic generation of `translation.ts` (can be disabled with `--no-generate-keys`)
 
 **Example:**
 
 ```bash
 onekey init -p ./translations -l en-GB
+onekey init -p ./translations --no-generate-keys
+```
+
+### Sync translation state
+
+Synchronizes the translation state, generates TypeScript keys, and reports stale translations.
+
+```bash
+Usage: onekey sync [options]
+```
+
+**What it does:**
+
+- Initializes new untracked keys and languages
+- Generates `translation.ts` (unless disabled in init)
+- Reports keys where translations are stale (base locale newer than translated locale)
+- Reports missing translations
+- Exits with code 1 if issues are found
+
+**Example:**
+
+```bash
+onekey sync
 ```
 
 ### Check translation status
 
-Reports the status of your translations and identifies stale translations that need updating.
+Read-only check for stale or missing translations (perfect for CI/CD).
 
 ```bash
 Usage: onekey status [options]
-
-Options:
-  -p, --path  Path to translations directory (required)
 ```
 
 **What it does:**
@@ -64,29 +86,16 @@ Options:
 - Loads `oneKeyState.json` and compares timestamps across locales
 - Reports keys where translations are stale (base locale newer than translated locale)
 - Reports missing translations
+- Never modifies state or generates files
 - Exits with code 1 if issues are found (perfect for CI/CD)
 
 **Example:**
 
 ```bash
-onekey status -p ./translations
+onekey status
 ```
 
-### Generate translation keys
 
-Creates TypeScript type definitions from your translation files. This ensures type safety when using translation keys in your code, helping catch errors at compile time rather than runtime.
-
-```bash
-Usage: onekey generate [options]
-
-Options:
-  -i, --input    Path for the json translations to read from
-  -o, --out      [OPTIONAL] Where to save the translation keys (defaults to input path)
-  -l, --locale   [OPTIONAL] Default locale to use (en-GB by default)
-  -c, --prettier [OPTIONAL] Path for the prettier config
-```
-
-**Note:** If `--out` is not specified, the translation keys will be saved to `translation.ts` in the input directory.
 
 ### Translate with AI
 
@@ -543,12 +552,12 @@ jobs:
 {
   "scripts": {
     "translations:init": "onekey init -p ./translations -l en-GB",
-    "translations:status": "onekey status -p ./translations",
-    "translations:generate": "onekey generate -i ./translations -l en-GB",
-    "translations:ai": "onekey translate -p ./translations --context ./translation-context.txt",
-    "translations:ai-all": "onekey translate -p ./translations --updateAll",
-    "translations:stats": "onekey translate -p ./translations --stats",
-    "build": "npm run translations:generate && next build"
+    "translations:sync": "onekey sync",
+    "translations:status": "onekey status",
+    "translations:ai": "onekey translate --context ./translation-context.txt",
+    "translations:ai-all": "onekey translate --updateAll",
+    "translations:stats": "onekey translate --stats",
+    "build": "npm run translations:sync && next build"
   }
 }
 ```
@@ -557,55 +566,45 @@ jobs:
 
 ```typescript
 import {
-  initializeState,
-  checkStatus,
-  translate,
-  generateKeys,
-  saveKeys,
-  loadState,
-  diffState,
+	initializeState,
+	checkStatus,
+	syncState,
+	translate,
+	loadState,
+	diffState,
 } from "@guestlinelabs/onekey";
 
 async function setupTranslations() {
-  // 1. Initialize state tracking
-  await initializeState({
-    translationsPath: "./translations",
-    baseLocale: "en-GB",
-  });
+	// 1. Initialize state tracking
+	await initializeState({
+		translationsPath: "./translations",
+		baseLocale: "en-GB",
+	});
 
-  // 2. Check current status
-  const exitCode = await checkStatus({
-    translationsPath: "./translations",
-  });
+	// 2. Sync state and generate translation.ts
+	const exitCode = await syncState();
 
-  if (exitCode === 0) {
-    console.log("All translations up to date!");
-    return;
-  }
+	if (exitCode === 0) {
+		console.log("All translations up to date!");
+		return;
+	}
 
-  // 3. Show stale translation statistics
-  const state = await loadState("./translations/oneKeyState.json", "en-GB");
-  const diffs = diffState(state);
-  console.log(`Found ${diffs.length} stale translations`);
+	// 3. Show stale translation statistics
+	const state = await loadState();
+	const diffs = diffState(state);
+	console.log(`Found ${diffs.length} stale translations`);
 
-  // 4. Translate stale keys only
-  await translate({
-    path: "./translations",
-    apiUrl: process.env.OPENAI_API_URL!,
-    apiKey: process.env.OPENAI_API_KEY!,
-    context: "Hotel booking application",
-    tone: "formal",
-    stats: true,
-  });
+	// 4. Translate stale keys only (syncState is called internally)
+	await translate({
+		path: "./translations",
+		apiUrl: process.env.OPENAI_API_URL!,
+		apiKey: process.env.OPENAI_API_KEY!,
+		context: "Hotel booking application",
+		tone: "formal",
+		stats: true,
+	});
 
-  // 5. Generate TypeScript types
-  await saveKeys({
-    translationsPath: "./translations",
-    translationKeysPath: "./src/types",
-    defaultLocale: "en-GB",
-  });
-
-  console.log("Translations updated successfully!");
+	console.log("Translations updated successfully!");
 }
 ```
 
@@ -651,10 +650,11 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
 
 ### Breaking Changes
 
-- **Removed Commands**: `fetch`, `upload`, `check` commands no longer exist
+- **Removed Commands**: `fetch`, `upload`, `check`, `generate` commands no longer exist
 - **Removed Dependencies**: OneSky integration completely removed
 - **New State System**: Requires `oneKeyState.json` for translation tracking
 - **Updated API**: Programmatic APIs changed to support local state
+- **New Commands**: `sync` command replaces `generate` functionality
 
 ### Migration Steps
 
@@ -669,9 +669,9 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
    ```json
    {
      "scripts": {
-       "translations:status": "onekey status -p ./translations",
-       "translations:translate": "onekey translate -p ./translations",
-       "translations:generate": "onekey generate -i ./translations"
+       "translations:sync": "onekey sync",
+       "translations:status": "onekey status",
+       "translations:translate": "onekey translate"
      }
    }
    ```
@@ -684,12 +684,14 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
      fetchTranslations,
      upload,
      checkTranslations,
+     generateKeys,
    } from "@guestlinelabs/onekey";
 
    // v2 (new)
    import {
      initializeState,
      checkStatus,
+     syncState,
      translate,
      loadState,
      saveState,
@@ -699,6 +701,10 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
 4. **Environment Variables**:
    - Remove: `ONESKY_PRIVATE_KEY`, `ONESKY_PUBLIC_KEY`
    - Keep: `OPENAI_API_URL`, `OPENAI_API_KEY`
+
+5. **Replace generate command**:
+   - Replace any `onekey generate` invocations with `onekey sync`
+   - Use `onekey status` for read-only CI checks
 
 ### Benefits of v2
 
