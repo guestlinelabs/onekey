@@ -1,9 +1,6 @@
 import prettier from "prettier";
 import type { LanguageInfo, TranslationSchema } from "./types";
-
-function unique<T>(x: T[]): T[] {
-	return [...new Set(x)];
-}
+import { unique } from "./utils";
 
 export interface Translations {
 	[fileName: string]: TranslationSchema;

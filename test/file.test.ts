@@ -7,7 +7,6 @@ import { z } from "zod";
 import {
 	checkStatus,
 	initializeState,
-	readJSON,
 	saveAiTranslations,
 	saveKeys,
 } from "../src/file";
@@ -103,45 +102,6 @@ describe("File Operations", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
-	});
-
-	describe("readJSON", () => {
-		it("should read and parse JSON successfully", async () => {
-			const mockContent = '{"hello": "world", "goodbye": "bye"}';
-			mockReadFile.mockResolvedValue(mockContent);
-
-			const result = await readJSON(TranslationSchema, "/test/path.json");
-
-			expect(mockReadFile).toHaveBeenCalledWith("/test/path.json", "utf-8");
-			expect(result).toEqual({
-				hello: "world",
-				goodbye: "bye",
-			});
-		});
-
-		it("should throw error when file read fails", async () => {
-			mockReadFile.mockRejectedValue(new Error("File not found"));
-
-			await expect(
-				readJSON(TranslationSchema, "/test/path.json"),
-			).rejects.toThrow("File not found");
-		});
-
-		it("should throw error when JSON is invalid", async () => {
-			mockReadFile.mockResolvedValue("invalid json");
-
-			await expect(
-				readJSON(TranslationSchema, "/test/path.json"),
-			).rejects.toThrow();
-		});
-
-		it("should throw error when schema validation fails", async () => {
-			mockReadFile.mockResolvedValue('{"invalid": "data"}');
-
-			await expect(
-				readJSON(TranslationSchema, "/test/path.json"),
-			).rejects.toThrow();
-		});
 	});
 
 	describe("initializeState", () => {
