@@ -713,6 +713,72 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
 - **Faster Workflows**: Only translate what's needed
 - **Better CI/CD**: Simple status checks without API dependencies
 
+## Migration from v4
+
+OneKey **v5** fully removes OneSky integration and introduces local-only state tracking. Use this guide to upgrade existing v4 projects.
+
+### Breaking Changes
+
+- **OneSky removed** – The `fetch`, `upload`, and `check` CLI commands (and their corresponding APIs) are gone. All translations now live exclusively in your repository.
+- **Local state file required** – A new `oneKeyState.json` file (created by `onekey init`) stores per-key timestamps so OneKey can tell when translations are stale or missing.
+- **New core commands** – `init`, `sync`, and `status` replace `generate` and `check`, adding automatic state management. The `translate` command is now state-aware and adds flags like `--update-all`, `--stats`, `--api-model`, etc.
+- **Environment variables changed** – Remove `ONESKY_PRIVATE_KEY` and `ONESKY_PUBLIC_KEY`. Keep `OPENAI_API_URL`, `OPENAI_API_KEY`, and optionally `OPENAI_API_MODEL`.
+- **API surface updated** – OneSky functions (`fetchTranslations`, `upload`, `checkTranslations`, `saveOneSkyTranslations`) were removed. New helpers (`initializeState`, `syncState`, `checkStatus`, `loadState`, `saveState`, `touch`, `isStale`, `diffState`) are available.
+
+### Migration Steps
+
+1. **Initialise local state**
+
+   ```bash
+   onekey init -p ./translations -l en-GB
+   ```
+
+2. **Update your scripts**
+
+   | v4 command        | v5 replacement  |
+   | ----------------- | --------------- |
+   | `onekey generate` | `onekey sync`   |
+   | `onekey check`    | `onekey status` |
+   | `onekey fetch`    | — (removed)     |
+   | `onekey upload`   | — (removed)     |
+
+3. **Clean environment variables**
+
+   ```bash
+   unset ONESKY_PRIVATE_KEY
+   unset ONESKY_PUBLIC_KEY
+   # keep your OpenAI variables
+   export OPENAI_API_KEY=your-key
+   ```
+
+4. **Migrate programmatic usage**
+
+   ```diff
+   - import { fetchTranslations, upload, checkTranslations } from "@guestlinelabs/onekey";
+   + import { initializeState, syncState, checkStatus, translate } from "@guestlinelabs/onekey";
+   ```
+
+   Typical v5 flow:
+
+   ```typescript
+   await initializeState({
+     translationsPath: "./translations",
+     baseLocale: "en-GB",
+   });
+   await syncState();
+   await translate({ path: "./translations", stats: true });
+   ```
+
+5. **Verify** – Run `onekey status`. Exit code `0` means everything is up-to-date; `1` indicates stale or missing translations.
+
+### Why v5 is better
+
+- Zero external dependencies – no calls to OneSky.
+- Faster incremental AI translation – only changed keys are processed.
+- Simple CI checks with `onekey status`.
+
+---
+
 ## Generated Output
 
 The `generate` command creates comprehensive TypeScript type definitions from your translation files.
