@@ -27,6 +27,7 @@ export async function translate(options: {
 	model?: string;
 	updateAll?: boolean;
 	stats?: boolean;
+	onProgress?: (progress: { done: number; total: number }) => void;
 }): Promise<TranslationOutput> {
 	const {
 		path,
@@ -37,6 +38,7 @@ export async function translate(options: {
 		model,
 		updateAll = false,
 		stats = false,
+		onProgress,
 	} = options;
 
 	if (!apiUrl || !apiKey) {
@@ -78,6 +80,7 @@ export async function translate(options: {
 		tone,
 		updateAll,
 		state,
+		onProgress,
 	});
 
 	await saveState(state);
@@ -112,6 +115,7 @@ async function performTranslations({
 	tone,
 	updateAll,
 	state,
+	onProgress,
 }: {
 	translationsFolder: string;
 	defaultLanguage: LanguageInfo;
@@ -123,6 +127,7 @@ async function performTranslations({
 	tone: string;
 	updateAll?: boolean;
 	state: State;
+	onProgress?: (progress: { done: number; total: number }) => void;
 }): Promise<ProjectTranslations> {
 	const otherLanguages = languages.filter(
 		(lang) => lang.code !== defaultLanguage.code,
@@ -130,6 +135,11 @@ async function performTranslations({
 	const defaultLanguageFiles = await readdir(
 		`${translationsFolder}/${defaultLanguage.code}`,
 	);
+
+	const totalTasks = otherLanguages.length * defaultLanguageFiles.length;
+	let completedTasks = 0;
+	// Initial progress report
+	onProgress?.({ done: 0, total: totalTasks });
 
 	const projectTranslations: ProjectTranslations = {};
 
@@ -150,7 +160,7 @@ async function performTranslations({
 
 		await Promise.all(
 			otherLanguages.map(async (targetLanguage) => {
-				fileTranslations[targetLanguage.code] = await translateLanguage({
+				const translated = await translateLanguage({
 					file,
 					translationsFolder,
 					targetLanguage,
@@ -166,6 +176,9 @@ async function performTranslations({
 					namespace,
 					now,
 				});
+				fileTranslations[targetLanguage.code] = translated;
+				completedTasks++;
+				onProgress?.({ done: completedTasks, total: totalTasks });
 			}),
 		);
 		projectTranslations[file] = fileTranslations;

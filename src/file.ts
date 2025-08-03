@@ -415,12 +415,14 @@ export async function saveAiTranslations({
 	apiModel,
 	updateAll,
 	stats,
+	onProgress,
 }: {
 	prettierConfigPath?: string;
 	context?: string;
 	tone?: string;
 	apiUrl: string;
 	apiKey: string;
+	onProgress?: (progress: { done: number; total: number }) => void;
 	apiModel?: string;
 	updateAll?: boolean;
 	stats?: boolean;
@@ -447,6 +449,7 @@ export async function saveAiTranslations({
 		baseLocale,
 		updateAll,
 		stats,
+		onProgress,
 	});
 
 	const prettierConfig = await getPrettierConfig(prettierConfigPath);

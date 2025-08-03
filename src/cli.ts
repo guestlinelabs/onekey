@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import chalk from "chalk";
+import cliProgress from "cli-progress";
 import prompts from "prompts";
 import yargs from "yargs/yargs";
 import {
@@ -205,6 +206,17 @@ yargs(process.argv.slice(2))
 				// Sync state first to ensure we have the latest state and translation.ts
 				await syncState();
 
+				let progressBar: any;
+				if (!args.quiet) {
+					progressBar = new cliProgress.SingleBar(
+						{
+							format: "Translating |{bar}| {percentage}% {value}/{total} tasks",
+							hideCursor: true,
+						},
+						cliProgress.Presets.shades_classic,
+					);
+				}
+
 				await saveAiTranslations({
 					apiKey: args["api-key"] ?? readEnv("OPENAI_API_KEY"),
 					apiUrl: args["api-url"] ?? readEnv("OPENAI_API_URL"),
@@ -214,6 +226,17 @@ yargs(process.argv.slice(2))
 					tone: args.tone,
 					updateAll: args["update-all"],
 					stats: args.stats,
+					onProgress: (progress) => {
+						if (!progressBar) return;
+						if (!progressBar.isActive) {
+							progressBar.start(progress.total, progress.done);
+						} else {
+							progressBar.update(progress.done);
+						}
+						if (progress.done >= progress.total && progressBar.isActive) {
+							progressBar.stop();
+						}
+					},
 				});
 				if (!args.quiet) {
 					console.log(chalk.green("✓ Translation completed successfully"));

@@ -23,6 +23,7 @@
 	"license": "ISC",
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
+		"@types/cli-progress": "^3.11.6",
 		"@types/md5": "^2.3.5",
 		"@types/nock": "^11.1.0",
 		"@types/node": "^24.1.0",
@@ -40,6 +41,7 @@
 	},
 	"dependencies": {
 		"chalk": "^5.4.1",
+		"cli-progress": "^3.12.0",
 		"prettier": "2 || 3",
 		"prompts": "^2.4.2",
 		"yargs": "^17.7.2",
