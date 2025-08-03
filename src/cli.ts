@@ -39,10 +39,6 @@ yargs(process.argv.slice(2))
 			alias: "q",
 			describe: "Suppress all output except errors",
 		},
-		json: {
-			type: "boolean",
-			describe: "Output results in JSON format",
-		},
 	})
 	.command(
 		"init",
