@@ -26,6 +26,7 @@
 		"@types/md5": "^2.3.5",
 		"@types/nock": "^11.1.0",
 		"@types/node": "^24.1.0",
+		"@types/prompts": "^2.4.9",
 		"@types/yargs": "^17.0.33",
 		"@vitest/coverage-v8": "^3.2.4",
 		"md5": "^2.3.0",
@@ -39,6 +40,7 @@
 	},
 	"dependencies": {
 		"prettier": "2 || 3",
+		"prompts": "^2.4.2",
 		"yargs": "^17.7.2",
 		"zod": "^3.23.8"
 	},

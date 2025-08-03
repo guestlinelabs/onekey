@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import prompts from "prompts";
 import yargs from "yargs/yargs";
 import {
 	checkStatus,
@@ -7,6 +8,7 @@ import {
 	saveAiTranslations,
 	syncState,
 } from "./file";
+import codes from "./language-codes.json";
 
 yargs(process.argv.slice(2))
 	.scriptName("onekey")
@@ -32,14 +34,12 @@ yargs(process.argv.slice(2))
 				.options({
 					path: {
 						type: "string",
-						demandOption: true,
 						alias: "p",
 						describe: "Path to translations directory",
 					},
 					baseLocale: {
 						type: "string",
 						alias: "l",
-						default: "en-GB",
 						describe: "Base locale for translations",
 					},
 					"no-generate-keys": {
@@ -48,18 +48,43 @@ yargs(process.argv.slice(2))
 						describe: "Disable automatic generation of translation.ts",
 					},
 				})
-				.example(
-					"$0 init -p ./translations -l en-GB",
-					"Initialize state tracking",
-				)
+				.example("$0 init -p ./translations -l en", "Initialize state tracking")
 				.example(
 					"$0 init -p ./translations --no-generate-keys",
 					"Initialize without translation.ts generation",
 				),
 		async (args) => {
+			const answers = await prompts([
+				{
+					type: args.path ? null : "text",
+					name: "translationsPath",
+					message: "Path to translations directory",
+					initial: "translations",
+				},
+				{
+					type: args.baseLocale ? null : "autocomplete",
+					name: "baseLocale",
+					message: "Base locale for translations",
+					choices: codes.map((code) => ({
+						title: `${code.code} (${code.englishName})`,
+						value: code.code,
+					})),
+					initial: "en",
+				},
+			]);
+			const translationsPath = args.path ?? answers.translationsPath;
+			const baseLocale = args.baseLocale ?? answers.baseLocale;
+
+			if (!translationsPath || !baseLocale) {
+				console.error(
+					"Please provide a valid translations path and base locale",
+				);
+				process.exit(1);
+			}
+
 			await initializeState({
-				translationsPath: args.path,
-				baseLocale: args.baseLocale,
+				translationsPath,
+				baseLocale,
 				generateKeys: !args["no-generate-keys"],
 			});
 		},

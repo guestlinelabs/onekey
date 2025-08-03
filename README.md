@@ -32,8 +32,8 @@ Sets up local state tracking for translation freshness management. This is the f
 Usage: onekey init [options]
 
 Options:
-  -p, --path              Path to translations directory (required)
-  -l, --baseLocale        Base locale for translations (defaults to en-GB)
+  -p, --path              Path to translations directory
+  -l, --baseLocale        Base locale for translations
   --no-generate-keys      Disable automatic generation of translation.ts
 ```
 
@@ -47,7 +47,7 @@ Options:
 **Example:**
 
 ```bash
-onekey init -p ./translations -l en-GB
+onekey init -p ./translations -l en
 onekey init -p ./translations --no-generate-keys
 ```
 
