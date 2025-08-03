@@ -1,5 +1,6 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import chalk from "chalk";
 import prettier from "prettier";
 import allLanguages from "./language-codes.json";
 
@@ -34,7 +35,9 @@ export async function initializeState({
 		throw err;
 	});
 	if (existingState) {
-		console.log("State already exists for this project");
+		console.log(
+			chalk.yellow("Translation state already exists for this project"),
+		);
 		return;
 	}
 
@@ -75,7 +78,7 @@ export async function initializeState({
 
 		await saveState(state);
 
-		console.log(`Initialized state tracking for ${baseLocale}`);
+		console.log(chalk.green(`✓ Initialized state tracking for ${baseLocale}`));
 	} catch (error) {
 		throw new Error(`Failed to initialize state: ${error}`);
 	}
@@ -90,7 +93,7 @@ export async function syncState(): Promise<number> {
 			throw err;
 		});
 		if (!state) {
-			console.log("No state found for this project");
+			console.log(chalk.yellow("No translation state found for this project"));
 			return 1;
 		}
 
@@ -168,7 +171,7 @@ export async function syncState(): Promise<number> {
 						});
 					}
 					hasNewLanguages = true;
-					console.log(`Found new language: ${locale}`);
+					console.log(chalk.blue(`Found new language: ${locale}`));
 				}
 
 				// Check if this language has the same files as base language
@@ -192,7 +195,9 @@ export async function syncState(): Promise<number> {
 					// Check if this file exists in the new language
 					if (!localeFileNames.includes(fileName)) {
 						console.log(
-							`Missing file ${fileName} in language ${locale}, creating it...`,
+							chalk.yellow(
+								`Missing file ${fileName} in language ${locale}, creating it...`,
+							),
 						);
 						await writeJSON(prettierConfig, localePath, fileName, {});
 						continue;
@@ -220,18 +225,20 @@ export async function syncState(): Promise<number> {
 			if (hasNewKeys || hasNewLanguages || hasUpdatedKeys) {
 				await saveState(state);
 				if (hasNewKeys) {
-					console.log("Initialized new untracked keys");
+					console.log(chalk.green("✓ Initialized new untracked keys"));
 				}
 				if (hasNewLanguages) {
-					console.log("Initialized new languages");
+					console.log(chalk.green("✓ Initialized new languages"));
 				}
 				if (hasUpdatedKeys) {
-					console.log("Updated keys in base locale");
+					console.log(chalk.green("✓ Updated keys in base locale"));
 				}
 			}
 		} catch (error) {
 			console.warn(
-				`Warning: Could not check for new keys in base language: ${error}`,
+				chalk.yellow(
+					`Warning: Could not check for new keys in base language: ${error}`,
+				),
 			);
 		}
 
@@ -242,29 +249,43 @@ export async function syncState(): Promise<number> {
 					translationKeysPath: undefined,
 					prettierConfigPath: undefined,
 				});
-				console.log("Generated translation.ts");
+				console.log(chalk.green("✓ Generated translation.ts"));
 			} catch (error) {
-				console.warn(`Warning: Could not generate translation keys: ${error}`);
+				// Only warn if it's not an expected "no files" case
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				if (
+					!errorMessage.includes("ENOENT") &&
+					!errorMessage.includes("no such file")
+				) {
+					console.warn(
+						chalk.yellow(
+							`Warning: Could not generate translation keys: ${errorMessage}`,
+						),
+					);
+				}
 			}
 		}
 
 		const diffs = diffState(state) ?? [];
 
 		if (diffs.length === 0) {
-			console.log("All translations are up to date.");
+			console.log(chalk.green("✓ All translations are up to date."));
 			return 0;
 		}
 
-		console.log("Found stale translations:");
+		console.log(chalk.yellow("Found stale translations:"));
 		for (const diff of diffs) {
 			console.log(
-				`[${diff.locale}] ${diff.key}: base=${diff.baseTs}, locale=${diff.localeTs}`,
+				chalk.red(
+					`  [${diff.locale}] ${diff.key}: base=${diff.baseTs}, locale=${diff.localeTs}`,
+				),
 			);
 		}
 
 		return 1;
 	} catch (error) {
-		console.error(`Error syncing state: ${error}`);
+		console.error(chalk.red(`Error syncing state: ${error}`));
 		return 1;
 	}
 }
@@ -278,27 +299,29 @@ export async function checkStatus(): Promise<number> {
 			throw err;
 		});
 		if (!state) {
-			console.log("No state found for this project");
+			console.log(chalk.yellow("No translation state found for this project"));
 			return 1;
 		}
 
 		const diffs = diffState(state) ?? [];
 
 		if (diffs.length === 0) {
-			console.log("All translations are up to date.");
+			console.log(chalk.green("✓ All translations are up to date."));
 			return 0;
 		}
 
-		console.log("Found stale translations:");
+		console.log(chalk.yellow("Found stale translations:"));
 		for (const diff of diffs) {
 			console.log(
-				`[${diff.locale}] ${diff.key}: base=${diff.baseTs}, locale=${diff.localeTs}`,
+				chalk.red(
+					`  [${diff.locale}] ${diff.key}: base=${diff.baseTs}, locale=${diff.localeTs}`,
+				),
 			);
 		}
 
 		return 1;
 	} catch (error) {
-		console.error(`Error checking status: ${error}`);
+		console.error(chalk.red(`Error checking status: ${error}`));
 		return 1;
 	}
 }

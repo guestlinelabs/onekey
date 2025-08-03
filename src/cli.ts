@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import chalk from "chalk";
 import prompts from "prompts";
 import yargs from "yargs/yargs";
 import {
@@ -9,6 +10,12 @@ import {
 	syncState,
 } from "./file";
 import codes from "./language-codes.json";
+
+// Global error handler for unhandled rejections
+process.on("unhandledRejection", (reason) => {
+	console.error(chalk.red("Error:"), reason);
+	process.exit(1);
+});
 
 yargs(process.argv.slice(2))
 	.scriptName("onekey")
@@ -26,6 +33,17 @@ yargs(process.argv.slice(2))
 		1,
 		"Please specify a command. Use --help to see available commands.",
 	)
+	.options({
+		quiet: {
+			type: "boolean",
+			alias: "q",
+			describe: "Suppress all output except errors",
+		},
+		json: {
+			type: "boolean",
+			describe: "Output results in JSON format",
+		},
+	})
 	.command(
 		"init",
 		"Initialize translation state tracking",
@@ -35,58 +53,84 @@ yargs(process.argv.slice(2))
 					path: {
 						type: "string",
 						alias: "p",
-						describe: "Path to translations directory",
+						describe:
+							"Path to translations directory (default: ./translations)",
+						default: "translations",
 					},
-					baseLocale: {
+					"base-locale": {
 						type: "string",
 						alias: "l",
-						describe: "Base locale for translations",
+						describe: "Base locale for translations (default: en)",
+						default: "en",
 					},
 					"no-generate-keys": {
 						type: "boolean",
 						default: false,
 						describe: "Disable automatic generation of translation.ts",
 					},
+					yes: {
+						type: "boolean",
+						alias: "y",
+						describe: "Skip interactive prompts and use defaults",
+					},
 				})
 				.example("$0 init -p ./translations -l en", "Initialize state tracking")
 				.example(
 					"$0 init -p ./translations --no-generate-keys",
 					"Initialize without translation.ts generation",
-				),
+				)
+				.example("$0 init --yes", "Initialize with defaults, skipping prompts"),
 		async (args) => {
-			const answers = await prompts([
-				{
-					type: args.path ? null : "text",
-					name: "translationsPath",
-					message: "Path to translations directory",
-					initial: "translations",
-				},
-				{
-					type: args.baseLocale ? null : "autocomplete",
-					name: "baseLocale",
-					message: "Base locale for translations",
-					choices: codes.map((code) => ({
-						title: `${code.code} (${code.englishName})`,
-						value: code.code,
-					})),
-					initial: "en",
-				},
-			]);
-			const translationsPath = args.path ?? answers.translationsPath;
-			const baseLocale = args.baseLocale ?? answers.baseLocale;
+			let translationsPath = args.path;
+			let baseLocale = args["base-locale"];
+
+			// Only show prompts if not using --yes and not all params provided
+			if (!args.yes && (!translationsPath || !baseLocale)) {
+				const answers = await prompts([
+					{
+						type: translationsPath ? null : "text",
+						name: "translationsPath",
+						message: "Path to translations directory",
+						initial: "translations",
+					},
+					{
+						type: baseLocale ? null : "autocomplete",
+						name: "baseLocale",
+						message: "Base locale for translations",
+						choices: codes.map((code) => ({
+							title: `${code.code} (${code.englishName})`,
+							value: code.code,
+						})),
+						initial: "en",
+					},
+				]);
+				translationsPath = translationsPath ?? answers.translationsPath;
+				baseLocale = baseLocale ?? answers.baseLocale;
+			}
 
 			if (!translationsPath || !baseLocale) {
 				console.error(
-					"Please provide a valid translations path and base locale",
+					chalk.red("Please provide a valid translations path and base locale"),
 				);
 				process.exit(1);
 			}
 
-			await initializeState({
-				translationsPath,
-				baseLocale,
-				generateKeys: !args["no-generate-keys"],
-			});
+			try {
+				await initializeState({
+					translationsPath,
+					baseLocale,
+					generateKeys: !args["no-generate-keys"],
+				});
+				if (!args.quiet) {
+					console.log(chalk.green("✓ Initialized translation state tracking"));
+				}
+			} catch (error) {
+				console.error(
+					chalk.red("Failed to initialize:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
 	.command(
@@ -95,43 +139,43 @@ yargs(process.argv.slice(2))
 		(yargs) =>
 			yargs
 				.options({
-					apiUrl: {
+					"api-url": {
 						type: "string",
 						alias: "u",
 						describe:
-							"OpenAI API URL (it can be read from the environment variable OPENAI_API_URL)",
+							"OpenAI API URL (can be read from OPENAI_API_URL env var)",
 					},
-					apiKey: {
+					"api-key": {
 						type: "string",
 						alias: "k",
 						describe:
-							"OpenAI API key (it can be read from the environment variable OPENAI_API_KEY)",
+							"OpenAI API key (can be read from OPENAI_API_KEY env var)",
 					},
-					apiModel: {
+					"api-model": {
 						type: "string",
 						alias: "m",
 						describe:
-							"OpenAI API model (it can be read from the environment variable OPENAI_API_MODEL)",
+							"OpenAI API model (can be read from OPENAI_API_MODEL env var)",
 					},
-					prettier: {
+					"prettier-config": {
 						type: "string",
 						alias: "c",
-						describe: "Path for the prettier config",
+						describe: "Path to prettier config file",
 					},
-					context: {
-						alias: "x",
+					"context-file": {
+						alias: "C",
 						type: "string",
 						description:
-							'File with additional context for the translations, for example: "These translations are used in a booking engine for hotel rooms"',
+							'File with additional context for translations (e.g., "These translations are used in a booking engine")',
 					},
 					tone: {
 						alias: "t",
 						type: "string",
 						default: "neutral",
 						description:
-							'Tone of the translation, for example: "formal" or "informal"',
+							'Tone of the translation (e.g., "formal" or "informal")',
 					},
-					updateAll: {
+					"update-all": {
 						type: "boolean",
 						default: false,
 						describe: "Re-translate even if not stale",
@@ -151,8 +195,9 @@ yargs(process.argv.slice(2))
 			function readEnv(key: string, optional: true): string | undefined;
 			function readEnv(key: string, optional = false) {
 				const env = process.env[key];
-				if (!env && !optional)
-					throw Error(`Could not find key ${key} in the environment variables`);
+				if (!env && !optional) {
+					throw new Error(`Missing required environment variable: ${key}`);
+				}
 				return env;
 			}
 
@@ -160,19 +205,30 @@ yargs(process.argv.slice(2))
 				process.loadEnvFile();
 			} catch {}
 
-			// Sync state first to ensure we have the latest state and translation.ts
-			await syncState();
+			try {
+				// Sync state first to ensure we have the latest state and translation.ts
+				await syncState();
 
-			await saveAiTranslations({
-				apiKey: args.apiKey ?? readEnv("OPENAI_API_KEY"),
-				apiUrl: args.apiUrl ?? readEnv("OPENAI_API_URL"),
-				apiModel: args.apiModel ?? readEnv("OPENAI_API_MODEL", true),
-				prettierConfigPath: args.prettier,
-				context: args.context,
-				tone: args.tone,
-				updateAll: args.updateAll,
-				stats: args.stats,
-			});
+				await saveAiTranslations({
+					apiKey: args["api-key"] ?? readEnv("OPENAI_API_KEY"),
+					apiUrl: args["api-url"] ?? readEnv("OPENAI_API_URL"),
+					apiModel: args["api-model"] ?? readEnv("OPENAI_API_MODEL", true),
+					prettierConfigPath: args["prettier-config"],
+					context: args["context-file"],
+					tone: args.tone,
+					updateAll: args["update-all"],
+					stats: args.stats,
+				});
+				if (!args.quiet) {
+					console.log(chalk.green("✓ Translation completed successfully"));
+				}
+			} catch (error) {
+				console.error(
+					chalk.red("Translation failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
 	.command(
@@ -181,7 +237,9 @@ yargs(process.argv.slice(2))
 		(yargs) => null,
 		async () => {
 			console.warn(
-				"The 'check' command is deprecated. Please use 'status' instead.",
+				chalk.yellow(
+					"The 'check' command is deprecated. Please use 'status' instead.",
+				),
 			);
 			await checkStatus();
 		},
@@ -194,8 +252,16 @@ yargs(process.argv.slice(2))
 		(yargs) =>
 			yargs.example("$0 sync", "Sync state and generate translation.ts"),
 		async () => {
-			const exitCode = await syncState();
-			process.exit(exitCode);
+			try {
+				const exitCode = await syncState();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Sync failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
 	.command(
@@ -203,9 +269,18 @@ yargs(process.argv.slice(2))
 		"Read-only check for stale or missing translations (CI-friendly)",
 		(yargs) => yargs.example("$0 status", "Report translation status"),
 		async () => {
-			const exitCode = await checkStatus();
-			process.exit(exitCode);
+			try {
+				const exitCode = await checkStatus();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Status check failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
+	.wrap(120)
 	.epilog("Docs: https://github.com/guestlinelabs/onekey#readme")
 	.help().argv;
