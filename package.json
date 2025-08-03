@@ -25,7 +25,7 @@
 		"@biomejs/biome": "1.9.4",
 		"@types/md5": "^2.3.5",
 		"@types/nock": "^11.1.0",
-		"@types/node": "^22.10.2",
+		"@types/node": "^24.1.0",
 		"@types/yargs": "^17.0.33",
 		"@vitest/coverage-v8": "^3.2.4",
 		"md5": "^2.3.0",
