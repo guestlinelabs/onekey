@@ -112,6 +112,7 @@ export async function syncState(): Promise<number> {
 
 			// Check for new keys in base language
 			let hasNewKeys = false;
+			let hasUpdatedKeys = false;
 			for (const fileName of baseFileNames) {
 				const filePath = path.join(baseLocalePath, fileName);
 				const content = await readJSON(TranslationSchema, filePath);
@@ -129,6 +130,10 @@ export async function syncState(): Promise<number> {
 						// This is a new untracked key - initialize it
 						touch(state, baseLocale, key, now, value);
 						hasNewKeys = true;
+					} else if (value && existingKey.current !== value) {
+						// This is an existing key with a new value
+						touch(state, baseLocale, key, now, value);
+						hasUpdatedKeys = true;
 					}
 				}
 			}
@@ -212,13 +217,16 @@ export async function syncState(): Promise<number> {
 			}
 
 			// If we found new keys or languages, save the updated state
-			if (hasNewKeys || hasNewLanguages) {
+			if (hasNewKeys || hasNewLanguages || hasUpdatedKeys) {
 				await saveState(state);
 				if (hasNewKeys) {
 					console.log("Initialized new untracked keys");
 				}
 				if (hasNewLanguages) {
 					console.log("Initialized new languages");
+				}
+				if (hasUpdatedKeys) {
+					console.log("Updated keys in base locale");
 				}
 			}
 		} catch (error) {
