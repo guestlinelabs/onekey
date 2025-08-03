@@ -274,6 +274,7 @@ async function translateViaCallOpenAi(
 			headers: {
 				"Content-Type": "application/json",
 				"api-key": config.apiKey,
+				Authorization: `Bearer ${config.apiKey}`,
 			},
 			body: JSON.stringify({
 				model: config.model,
