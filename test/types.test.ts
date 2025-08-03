@@ -1,16 +1,13 @@
-import { expect, it, describe } from "vitest";
+import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-	LanguageInfo,
-	TranslationSchema,
-} from "../src/types";
+import { LanguageInfo, TranslationSchema } from "../src/types";
 import type {
-	TranslationConfig,
-	AiResponse,
 	AiChoice,
 	AiChoiceMessage,
-	TranslationFile,
+	AiResponse,
 	ProjectTranslations,
+	TranslationConfig,
+	TranslationFile,
 	TranslationOutput,
 } from "../src/types";
 
@@ -275,4 +272,4 @@ describe("types", () => {
 			expect(translationOutput.languages[1].code).toBe("es-ES");
 		});
 	});
-}); 
+});

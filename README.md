@@ -32,9 +32,11 @@ Sets up local state tracking for translation freshness management. This is the f
 Usage: onekey init [options]
 
 Options:
-  -p, --path              Path to translations directory
-  -l, --baseLocale        Base locale for translations
+  -p, --path              Path to translations directory (default: ./translations)
+  -l, --baseLocale        Base locale for translations (default: en)
   --no-generate-keys      Disable automatic generation of translation.ts
+  -y, --yes               Skip interactive prompts and use defaults
+  -q, --quiet             Suppress all output except errors
 ```
 
 **What it does:**
@@ -103,16 +105,14 @@ Uses AI to automatically translate your content into different languages with in
 Usage: onekey translate [options]
 
 Options:
-  -p, --path       Path for the json translations (required)
-  -l, --baseLocale [OPTIONAL] Base locale (defaults to language marked as default in languages.json)
-  -u, --apiUrl     OpenAI API URL (it can be read from environment variable OPENAI_API_URL)
-  -k, --apiKey     OpenAI API key (it can be read from environment variable OPENAI_API_KEY)
-  -m, --model      OpenAI API model (it can be read from environment variable OPENAI_API_MODEL)
-  -c, --prettier   [OPTIONAL] Path for the prettier config
-  -x, --context    [OPTIONAL] File with additional context for the translations
-  -t, --tone       [OPTIONAL] Tone of the translation (formal/informal/neutral, defaults to neutral)
-  --updateAll      [OPTIONAL] Re-translate all keys even if not stale (defaults to false)
-  --stats          [OPTIONAL] Print stale key statistics per locale (defaults to false)
+  -u, --api-url         OpenAI API URL (fallback: OPENAI_API_URL env var)
+  -k, --api-key         OpenAI API key (fallback: OPENAI_API_KEY env var)
+  -m, --api-model       OpenAI API model (fallback: OPENAI_API_MODEL env var)
+  -c, --prettier-config Path to Prettier config file
+  -C, --context-file    File with additional context for translations
+  -t, --tone            Tone of the translation (formal / informal / neutral, default: neutral)
+  --update-all          Re-translate all keys even if they are not stale
+  --stats               Print stale key statistics per locale
 ```
 
 **State-Aware Translation:**
@@ -176,7 +176,7 @@ The `oneKeyState.json` file is created in your translations directory and tracks
 1. **Initialize**: `onekey init` scans base locale and creates initial state
 2. **Translate**: `onekey translate` updates only stale translations and updates timestamps
 3. **Check**: `onekey status` reports current translation health
-4. **Generate**: `onekey generate` creates TypeScript types from current translations
+4. **Sync Again**: run `onekey sync` anytime you want to regenerate `translation.ts` and refresh the state
 
 ## Programmatic API
 
