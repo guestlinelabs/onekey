@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+import path from "node:path";
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import prompts from "prompts";
@@ -17,6 +19,49 @@ process.on("unhandledRejection", (reason) => {
 	console.error(chalk.red("Error:"), reason);
 	process.exit(1);
 });
+
+function findExistingTranslationsPath() {
+	const cwd = process.cwd();
+	const pathsToCheck = [
+		path.join(cwd, "translations"),
+		path.join(cwd, "public", "translations"),
+		path.join(cwd, "src", "translations"),
+		path.join(cwd, "src", "client", "translations"),
+	];
+
+	const isAv4Path = (dir: string) => {
+		const hasLanguages = () => {
+			try {
+				const file: Array<{ code: string }> = JSON.parse(
+					fs.readFileSync(path.join(dir, "languages.json"), "utf-8"),
+				);
+				return file.every(({ code }) => codes.some((c) => c.code === code));
+			} catch {
+				return false;
+			}
+		};
+
+		const hasTranslationsFolders = () => {
+			try {
+				const dirs = fs
+					.readdirSync(dir, { withFileTypes: true })
+					.filter((d) => d.isDirectory());
+				return dirs.every((d) => codes.some((c) => c.code === d.name));
+			} catch {
+				return false;
+			}
+		};
+
+		return hasLanguages() || hasTranslationsFolders();
+	};
+
+	for (const pathToCheck of pathsToCheck) {
+		console.log("RESULT", pathToCheck, isAv4Path(pathToCheck));
+		if (isAv4Path(pathToCheck)) {
+			return path.relative(cwd, pathToCheck);
+		}
+	}
+}
 
 yargs(process.argv.slice(2))
 	.scriptName("onekey")
@@ -50,15 +95,12 @@ yargs(process.argv.slice(2))
 					path: {
 						type: "string",
 						alias: "p",
-						describe:
-							"Path to translations directory (default: ./translations)",
-						default: "translations",
+						describe: "Path to translations directory",
 					},
 					"base-locale": {
 						type: "string",
 						alias: "l",
-						describe: "Base locale for translations (default: en)",
-						default: "en",
+						describe: "Base locale for translations",
 					},
 					"no-generate-keys": {
 						type: "boolean",
@@ -81,6 +123,8 @@ yargs(process.argv.slice(2))
 			let translationsPath = args.path;
 			let baseLocale = args["base-locale"];
 
+			const existingPath = findExistingTranslationsPath();
+
 			// Only show prompts if not using --yes and not all params provided
 			if (!args.yes && (!translationsPath || !baseLocale)) {
 				const answers = await prompts([
@@ -88,7 +132,7 @@ yargs(process.argv.slice(2))
 						type: translationsPath ? null : "text",
 						name: "translationsPath",
 						message: "Path to translations directory",
-						initial: "translations",
+						initial: existingPath ?? "translations",
 					},
 					{
 						type: baseLocale ? null : "autocomplete",
@@ -124,6 +168,41 @@ yargs(process.argv.slice(2))
 			} catch (error) {
 				console.error(
 					chalk.red("Failed to initialize:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
+		},
+	)
+	.command(
+		"sync",
+		"Sync state, generate translation.ts, and report stale translations",
+		(yargs) =>
+			yargs.example("$0 sync", "Sync state and generate translation.ts"),
+		async () => {
+			try {
+				const exitCode = await syncState();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Sync failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
+		},
+	)
+	.command(
+		"status",
+		"Read-only check for stale or missing translations (CI-friendly)",
+		(yargs) => yargs.example("$0 status", "Report translation status"),
+		async () => {
+			try {
+				const exitCode = await checkStatus();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Status check failed:"),
 					error instanceof Error ? error.message : error,
 				);
 				process.exit(1);
@@ -264,41 +343,6 @@ yargs(process.argv.slice(2))
 		},
 		[],
 		true,
-	)
-	.command(
-		"sync",
-		"Sync state, generate translation.ts, and report stale translations",
-		(yargs) =>
-			yargs.example("$0 sync", "Sync state and generate translation.ts"),
-		async () => {
-			try {
-				const exitCode = await syncState();
-				process.exit(exitCode);
-			} catch (error) {
-				console.error(
-					chalk.red("Sync failed:"),
-					error instanceof Error ? error.message : error,
-				);
-				process.exit(1);
-			}
-		},
-	)
-	.command(
-		"status",
-		"Read-only check for stale or missing translations (CI-friendly)",
-		(yargs) => yargs.example("$0 status", "Report translation status"),
-		async () => {
-			try {
-				const exitCode = await checkStatus();
-				process.exit(exitCode);
-			} catch (error) {
-				console.error(
-					chalk.red("Status check failed:"),
-					error instanceof Error ? error.message : error,
-				);
-				process.exit(1);
-			}
-		},
 	)
 	.wrap(120)
 	.epilog("Docs: https://github.com/guestlinelabs/onekey#readme")

@@ -1000,6 +1000,11 @@
 		"localName": "中文"
 	},
 	{
+		"code": "zh-Hans-CN",
+		"englishName": "Chinese (Simplified, China)",
+		"localName": "中文 (简体)"
+	},
+	{
 		"code": "zh-CN",
 		"englishName": "Chinese (Simplified, China)",
 		"localName": "中文 (简体)"
