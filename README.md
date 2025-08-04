@@ -17,7 +17,7 @@ npm install @guestlinelabs/onekey
 - [Configuration Options](#configuration-options)
 - [TypeScript Integration](#typescript-integration)
 - [Examples and Best Practices](#examples-and-best-practices)
-- [Migration from v1](#migration-from-v1)
+- [Migration from v4](#migration-from-v4)
 - [Generated Output](#generated-output)
 
 ## CLI Usage
@@ -644,9 +644,9 @@ try {
 }
 ```
 
-## Migration from v1
+## Migration from v4
 
-OneKey v2 introduces breaking changes by removing OneSky integration in favor of local-only translation management.
+OneKey v5 introduces breaking changes by removing OneSky integration in favor of local-only translation management.
 
 ### Breaking Changes
 
@@ -679,7 +679,7 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
 3. **Update Programmatic Usage**:
 
    ```typescript
-   // v1 (removed)
+   // v4 (removed)
    import {
      fetchTranslations,
      upload,
@@ -687,7 +687,7 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
      generateKeys,
    } from "@guestlinelabs/onekey";
 
-   // v2 (new)
+   // v5 (new)
    import {
      initializeState,
      checkStatus,
@@ -706,7 +706,7 @@ OneKey v2 introduces breaking changes by removing OneSky integration in favor of
    - Replace any `onekey generate` invocations with `onekey sync`
    - Use `onekey status` for read-only CI checks
 
-### Benefits of v2
+### Benefits of v5
 
 - **No External Dependencies**: Fully local translation management
 - **State Tracking**: Intelligent freshness detection
