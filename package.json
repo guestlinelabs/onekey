@@ -1,61 +1,61 @@
 {
-  "name": "@guestlinelabs/onekey",
-  "version": "5.0.0-beta.2",
-  "description": "Local translation management utility with AI translation support and TypeScript key generation",
-  "bin": {
-    "onekey": "lib/cli.js"
-  },
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "typings": "lib/index.d.ts",
-  "scripts": {
-    "clean": "rimraf lib",
-    "prebuild": "npm run clean && npm run lint",
-    "build": "tsc",
-    "prepare": "npm run build",
-    "lint": "biome check --write .",
-    "test": "vitest --run --silent",
-    "coverage": "vitest run --coverage",
-    "test:watch": "vitest"
-  },
-  "keywords": [],
-  "author": "Guestline",
-  "license": "ISC",
-  "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@types/cli-progress": "^3.11.6",
-    "@types/md5": "^2.3.5",
-    "@types/nock": "^11.1.0",
-    "@types/node": "^24.1.0",
-    "@types/prompts": "^2.4.9",
-    "@types/yargs": "^17.0.33",
-    "@vitest/coverage-v8": "^3.2.4",
-    "md5": "^2.3.0",
-    "nock": "^14.0.0-beta.19",
-    "rimraf": "^6.0.1",
-    "typescript": "^5.7.2",
-    "vitest": "^3.2.4"
-  },
-  "peerDependencies": {
-    "prettier": "2 || 3"
-  },
-  "dependencies": {
-    "chalk": "^5.4.1",
-    "cli-progress": "^3.12.0",
-    "prettier": "2 || 3",
-    "prompts": "^2.4.2",
-    "yargs": "^17.7.2",
-    "zod": "^3.23.8"
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/guestlinelabs/onekey.git"
-  },
-  "bugs": {
-    "url": "https://github.com/guestlinelabs/onekey/issues"
-  },
-  "homepage": "https://github.com/guestlinelabs/onekey#readme"
+	"name": "@guestlinelabs/onekey",
+	"version": "5.0.0-beta.3",
+	"description": "Local translation management utility with AI translation support and TypeScript key generation",
+	"bin": {
+		"onekey": "lib/cli.js"
+	},
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"typings": "lib/index.d.ts",
+	"scripts": {
+		"clean": "rimraf lib",
+		"prebuild": "npm run clean && npm run lint",
+		"build": "tsc",
+		"prepare": "npm run build",
+		"lint": "biome check --write .",
+		"test": "vitest --run --silent",
+		"coverage": "vitest run --coverage",
+		"test:watch": "vitest"
+	},
+	"keywords": [],
+	"author": "Guestline",
+	"license": "ISC",
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@types/cli-progress": "^3.11.6",
+		"@types/md5": "^2.3.5",
+		"@types/nock": "^11.1.0",
+		"@types/node": "^24.1.0",
+		"@types/prompts": "^2.4.9",
+		"@types/yargs": "^17.0.33",
+		"@vitest/coverage-v8": "^3.2.4",
+		"md5": "^2.3.0",
+		"nock": "^14.0.0-beta.19",
+		"rimraf": "^6.0.1",
+		"typescript": "^5.7.2",
+		"vitest": "^3.2.4"
+	},
+	"peerDependencies": {
+		"prettier": "2 || 3"
+	},
+	"dependencies": {
+		"chalk": "^5.4.1",
+		"cli-progress": "^3.12.0",
+		"prettier": "2 || 3",
+		"prompts": "^2.4.2",
+		"yargs": "^17.7.2",
+		"zod": "^3.23.8"
+	},
+	"directories": {
+		"lib": "lib"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/guestlinelabs/onekey.git"
+	},
+	"bugs": {
+		"url": "https://github.com/guestlinelabs/onekey/issues"
+	},
+	"homepage": "https://github.com/guestlinelabs/onekey#readme"
 }

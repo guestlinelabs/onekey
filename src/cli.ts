@@ -13,6 +13,7 @@ import {
 	syncState,
 } from "./file";
 import codes from "./language-codes.json";
+import { loadState } from "./state";
 
 // Global error handler for unhandled rejections
 process.on("unhandledRejection", (reason) => {
@@ -121,6 +122,19 @@ yargs(process.argv.slice(2))
 		async (args) => {
 			let translationsPath = args.path;
 			let baseLocale = args["base-locale"];
+
+			const existingState = await loadState().catch((err) => {
+				if (err instanceof Error && err.message.includes("ENOENT")) {
+					return undefined;
+				}
+				throw err;
+			});
+			if (existingState) {
+				console.log(
+					chalk.yellow("Translation state already exists for this project"),
+				);
+				return;
+			}
 
 			const existingPath = findExistingTranslationsPath();
 
