@@ -56,7 +56,6 @@ function findExistingTranslationsPath() {
 	};
 
 	for (const pathToCheck of pathsToCheck) {
-		console.log("RESULT", pathToCheck, isAv4Path(pathToCheck));
 		if (isAv4Path(pathToCheck)) {
 			return path.relative(cwd, pathToCheck);
 		}

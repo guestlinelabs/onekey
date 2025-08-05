@@ -26,8 +26,6 @@ export async function initializeState({
 	baseLocale: string;
 	generateKeys?: boolean;
 }): Promise<void> {
-	const statePath = path.join(process.cwd(), "oneKeyState.json");
-
 	const existingState = await loadState().catch((err) => {
 		if (err instanceof Error && err.message.includes("ENOENT")) {
 			return undefined;
