@@ -1,19 +1,21 @@
 import { readFile, readdir } from "node:fs/promises";
+import {
+	type State,
+	diffState,
+	getLanguagesInfo,
+	loadState,
+	saveState,
+	touch,
+} from "./state";
 import type {
 	AiResponse,
+	LanguageInfo,
 	ProjectTranslations,
 	TranslationConfig,
 	TranslationOutput,
 } from "./types";
 
 type GenericTranslations = Record<string, string>;
-
-interface LanguageInfo {
-	code: string;
-	englishName: string;
-	localName: string;
-	default?: boolean;
-}
 
 export async function translate(options: {
 	path: string;
@@ -22,26 +24,66 @@ export async function translate(options: {
 	tone?: string;
 	apiUrl: string;
 	apiKey?: string;
+	model?: string;
+	updateAll?: boolean;
+	stats?: boolean;
+	onProgress?: (progress: { done: number; total: number }) => void;
 }): Promise<TranslationOutput> {
-	const { path, context = "", tone = "formal", apiUrl, apiKey } = options;
+	const {
+		path,
+		context = "",
+		tone = "formal",
+		apiUrl,
+		apiKey,
+		model,
+		updateAll = false,
+		stats = false,
+		onProgress,
+	} = options;
 
 	if (!apiUrl || !apiKey) {
 		throw new Error("Missing required parameters: apiUrl or apiKey");
 	}
 
-	const languages = await loadJsonFile<LanguageInfo[]>(
-		`${path}/languages.json`,
-	);
+	const state = await loadState();
+	if (!state) {
+		throw new Error("No state found for this project");
+	}
+
+	const languages = getLanguagesInfo(state);
 	const defaultLanguage = findDefaultLanguage(languages, options.baseLocale);
 
-	const translations = await translateViaAi({
+	if (stats) {
+		const diffs = diffState(state);
+		const statsByLocale = diffs.reduce(
+			(acc, diff) => {
+				acc[diff.locale] = (acc[diff.locale] || 0) + 1;
+				return acc;
+			},
+			{} as Record<string, number>,
+		);
+
+		console.log("Stale translations by locale:");
+		for (const [locale, count] of Object.entries(statsByLocale)) {
+			console.log(`  ${locale}: ${count} stale keys`);
+		}
+	}
+
+	const translations = await performTranslations({
 		translationsFolder: path,
 		defaultLanguage,
+		languages,
 		apiUrl,
 		apiKey,
+		model,
 		context,
 		tone,
+		updateAll,
+		state,
+		onProgress,
 	});
+
+	await saveState(state);
 
 	return { languages, translations: [translations] };
 }
@@ -62,24 +104,31 @@ function findDefaultLanguage(
 	return defaultLanguage;
 }
 
-async function translateViaAi({
-	apiUrl,
-	apiKey,
+async function performTranslations({
 	translationsFolder,
 	defaultLanguage,
+	languages,
+	apiUrl,
+	apiKey,
+	model,
 	context,
 	tone,
+	updateAll,
+	state,
+	onProgress,
 }: {
 	translationsFolder: string;
 	defaultLanguage: LanguageInfo;
+	languages: LanguageInfo[];
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
+	updateAll?: boolean;
+	state: State;
+	onProgress?: (progress: { done: number; total: number }) => void;
 }): Promise<ProjectTranslations> {
-	const languages = await loadJsonFile<LanguageInfo[]>(
-		`${translationsFolder}/languages.json`,
-	);
 	const otherLanguages = languages.filter(
 		(lang) => lang.code !== defaultLanguage.code,
 	);
@@ -87,112 +136,133 @@ async function translateViaAi({
 		`${translationsFolder}/${defaultLanguage.code}`,
 	);
 
-	const result: ProjectTranslations = {};
+	const totalTasks = otherLanguages.length * defaultLanguageFiles.length;
+	let completedTasks = 0;
+	// Initial progress report
+	onProgress?.({ done: 0, total: totalTasks });
+
+	const projectTranslations: ProjectTranslations = {};
 
 	for (const file of defaultLanguageFiles) {
-		result[file] = await translateFile({
-			file,
-			translationsFolder,
-			defaultLanguage,
-			otherLanguages,
-			apiUrl,
-			apiKey,
-			context,
-			tone,
-		});
+		const defaultLanguageContent = await loadJsonFile<GenericTranslations>(
+			`${translationsFolder}/${defaultLanguage.code}/${file}`,
+		);
+		const fileTranslations: Record<string, GenericTranslations> = {
+			[defaultLanguage.code]: defaultLanguageContent,
+		};
+
+		const namespace = file.replace(".json", "");
+		const now = new Date();
+		const flatDefaultKeys = flattenKeys(defaultLanguageContent, namespace);
+		for (const key of flatDefaultKeys) {
+			touch(state, defaultLanguage.code, key, now);
+		}
+
+		await Promise.all(
+			otherLanguages.map(async (targetLanguage) => {
+				const translated = await translateLanguage({
+					file,
+					translationsFolder,
+					targetLanguage,
+					defaultLanguage,
+					defaultLanguageContent,
+					apiUrl,
+					apiKey,
+					model,
+					context,
+					tone,
+					updateAll,
+					state,
+					namespace,
+					now,
+				});
+				fileTranslations[targetLanguage.code] = translated;
+				completedTasks++;
+				onProgress?.({ done: completedTasks, total: totalTasks });
+			}),
+		);
+		projectTranslations[file] = fileTranslations;
 	}
 
-	return result;
+	return projectTranslations;
 }
 
-async function translateFile({
-	file,
-	translationsFolder,
-	defaultLanguage,
-	otherLanguages,
-	apiUrl,
-	apiKey,
-	context,
-	tone,
-}: {
-	file: string;
-	translationsFolder: string;
-	defaultLanguage: LanguageInfo;
-	otherLanguages: LanguageInfo[];
-	apiUrl: string;
-	apiKey: string;
-	context: string;
-	tone: string;
-}): Promise<Record<string, GenericTranslations>> {
-	const defaultLanguageContent = await loadJsonFile<GenericTranslations>(
-		`${translationsFolder}/${defaultLanguage.code}/${file}`,
-	);
-	const result: Record<string, GenericTranslations> = {
-		[defaultLanguage.code]: defaultLanguageContent,
-	};
-
-	await Promise.all(
-		otherLanguages.map(async (targetLanguage) => {
-			result[targetLanguage.code] = await translateToLanguage({
-				file,
-				translationsFolder,
-				targetLanguage,
-				defaultLanguage,
-				defaultContent: defaultLanguageContent,
-				apiUrl,
-				apiKey,
-				context,
-				tone,
-			});
-		}),
-	);
-
-	return result;
-}
-
-async function translateToLanguage({
+async function translateLanguage({
 	file,
 	translationsFolder,
 	targetLanguage,
 	defaultLanguage,
-	defaultContent,
+	defaultLanguageContent,
 	apiUrl,
 	apiKey,
+	model,
 	context,
 	tone,
+	updateAll,
+	state,
+	namespace,
+	now,
 }: {
 	file: string;
 	translationsFolder: string;
 	targetLanguage: LanguageInfo;
 	defaultLanguage: LanguageInfo;
-	defaultContent: GenericTranslations;
+	defaultLanguageContent: GenericTranslations;
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	context: string;
 	tone: string;
+	updateAll?: boolean;
+	state: State;
+	namespace: string;
+	now: Date;
 }): Promise<GenericTranslations> {
-	const existingTranslations = await loadExistingTranslations(
-		`${translationsFolder}/${targetLanguage.code}/${file}`,
-	);
+	let existingTranslations: GenericTranslations;
+	try {
+		existingTranslations = await loadJsonFile(
+			`${translationsFolder}/${targetLanguage.code}/${file}`,
+		);
+	} catch (error) {
+		existingTranslations = {};
+	}
 
-	const missingTranslations = getMissingTranslations(
-		defaultContent,
-		existingTranslations,
-	);
+	const missingTranslations = updateAll
+		? defaultLanguageContent
+		: Object.entries(defaultLanguageContent).reduce((acc, [key, value]) => {
+				if (!(key in existingTranslations)) {
+					acc[key] = value;
+				}
+				return acc;
+			}, {} as GenericTranslations);
 
 	if (Object.keys(missingTranslations).length === 0) {
 		return existingTranslations;
 	}
 
-	const translatedContent = await translateMissingContent({
-		missingTranslations,
-		targetLanguage,
-		defaultLanguage,
-		apiUrl,
-		apiKey,
-		context,
-		tone,
-	});
+	const chunks = splitIntoChunks(missingTranslations, 100);
+	let translatedContent: GenericTranslations = {};
+
+	for (const chunk of chunks) {
+		const translation = await translateViaCallOpenAi(
+			{
+				apiUrl,
+				apiKey,
+				model,
+				targetLanguageCode: targetLanguage.code,
+				originalLanguageCode: defaultLanguage.code,
+				context,
+				tone,
+			},
+			chunk,
+		);
+		translatedContent = { ...translatedContent, ...translation };
+	}
+
+	const flatTranslatedKeys = flattenKeys(translatedContent, namespace);
+	for (const key of flatTranslatedKeys) {
+		touch(state, targetLanguage.code, key, now);
+	}
 
 	const result = { ...existingTranslations, ...translatedContent };
 
@@ -205,7 +275,7 @@ async function translateToLanguage({
 	return result;
 }
 
-async function translateOneSky(
+async function translateViaCallOpenAi(
 	config: TranslationConfig,
 	content: GenericTranslations,
 ): Promise<GenericTranslations> {
@@ -217,8 +287,10 @@ async function translateOneSky(
 			headers: {
 				"Content-Type": "application/json",
 				"api-key": config.apiKey,
+				Authorization: `Bearer ${config.apiKey}`,
 			},
 			body: JSON.stringify({
+				model: config.model,
 				temperature: 1,
 				max_tokens: 4096,
 				user: `translation-automation-${config.originalLanguageCode}-${config.targetLanguageCode}`,
@@ -256,66 +328,6 @@ async function loadJsonFile<T>(path: string): Promise<T> {
 	}
 }
 
-async function loadExistingTranslations(
-	path: string,
-): Promise<GenericTranslations> {
-	try {
-		return await loadJsonFile(path);
-	} catch (error) {
-		return {};
-	}
-}
-
-function getMissingTranslations(
-	defaultContent: GenericTranslations,
-	existingTranslations: GenericTranslations,
-): GenericTranslations {
-	return Object.entries(defaultContent).reduce((acc, [key, value]) => {
-		if (!(key in existingTranslations)) {
-			acc[key] = value;
-		}
-		return acc;
-	}, {} as GenericTranslations);
-}
-
-async function translateMissingContent({
-	missingTranslations,
-	targetLanguage,
-	defaultLanguage,
-	apiUrl,
-	apiKey,
-	context,
-	tone,
-}: {
-	missingTranslations: GenericTranslations;
-	targetLanguage: LanguageInfo;
-	defaultLanguage: LanguageInfo;
-	apiUrl: string;
-	apiKey: string;
-	context: string;
-	tone: string;
-}): Promise<GenericTranslations> {
-	const chunks = splitIntoChunks(missingTranslations, 100);
-	let result = {};
-
-	for (const chunk of chunks) {
-		const translation = await translateOneSky(
-			{
-				apiUrl,
-				apiKey,
-				targetLanguageCode: targetLanguage.code,
-				originalLanguageCode: defaultLanguage.code,
-				context,
-				tone,
-			},
-			chunk,
-		);
-		result = { ...result, ...translation };
-	}
-
-	return result;
-}
-
 function splitIntoChunks(
 	obj: GenericTranslations,
 	chunkSize: number,
@@ -332,6 +344,23 @@ function splitIntoChunks(
 		}
 		return chunks;
 	}, []);
+}
+
+function flattenKeys(obj: any, namespace: string, prefix = ""): string[] {
+	const keys: string[] = [];
+
+	for (const [key, value] of Object.entries(obj)) {
+		const fullKey = prefix ? `${prefix}.${key}` : key;
+		const namespacedKey = `${namespace}.${fullKey}`;
+
+		if (typeof value === "string") {
+			keys.push(namespacedKey);
+		} else if (typeof value === "object" && value !== null) {
+			keys.push(...flattenKeys(value, namespace, fullKey));
+		}
+	}
+
+	return keys;
 }
 
 function buildTranslationPrompt(
@@ -370,7 +399,7 @@ function buildTranslationPrompt(
 		},
 		{
 			role: "system",
-			content: `Example of valid responses: Text to translate: { "link_text": "Link text", "invalid_email_error": "Invalid email format" } Original language: "en-GB" Target language: "fr-FR" Response: { "link_text": "Texte du lien", "invalid_email_error": "Format email invalide" }`,
+			content: `Example of valid responses: Text to translate: { "link_text": "Link text", "invalid_email_error": "Invalid email format" } Original language: "en" Target language: "fr-FR" Response: { "link_text": "Texte du lien", "invalid_email_error": "Format email invalide" }`,
 		},
 		config.context
 			? {

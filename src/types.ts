@@ -17,6 +17,7 @@ export type AiResponse = {
 export interface TranslationConfig {
 	apiUrl: string;
 	apiKey: string;
+	model?: string;
 	targetLanguageCode: string;
 	originalLanguageCode: string;
 	context: string;
@@ -27,6 +28,7 @@ export const LanguageInfo = z.object({
 	code: z.string(),
 	englishName: z.string(),
 	localName: z.string(),
+	default: z.boolean().optional(),
 });
 export type LanguageInfo = z.infer<typeof LanguageInfo>;
 

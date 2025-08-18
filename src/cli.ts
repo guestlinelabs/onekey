@@ -1,316 +1,362 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+import path from "node:path";
+import chalk from "chalk";
+import cliProgress from "cli-progress";
+import prompts from "prompts";
 import yargs from "yargs/yargs";
-import { checkTranslations } from "./check-translations";
 import {
+	checkStatus,
+	initializeState,
 	saveAiTranslations,
-	saveKeys,
-	saveOneSkyTranslations,
-	upload,
+	syncState,
 } from "./file";
+import codes from "./language-codes.json";
+import { loadState } from "./state";
 
-const readEnv = (key: string): string => {
-	const env = process.env[key];
+// Global error handler for unhandled rejections
+process.on("unhandledRejection", (reason) => {
+	console.error(chalk.red("Error:"), reason);
+	process.exit(1);
+});
 
-	if (!env)
-		throw Error(`Could not find key ${key} in the environment variables`);
+function findExistingTranslationsPath() {
+	const cwd = process.cwd();
+	const pathsToCheck = [
+		path.join(cwd, "translations"),
+		path.join(cwd, "public", "translations"),
+		path.join(cwd, "src", "translations"),
+		path.join(cwd, "src", "client", "translations"),
+	];
 
-	return env;
-};
+	const isAv4Path = (dir: string) => {
+		const hasLanguages = () => {
+			try {
+				const file: Array<{ code: string }> = JSON.parse(
+					fs.readFileSync(path.join(dir, "languages.json"), "utf-8"),
+				);
+				return file.every(({ code }) => codes.some((c) => c.code === code));
+			} catch {
+				return false;
+			}
+		};
 
-function getFileNames(input: string): string[] {
-	return input
-		.split(",")
-		.map((x) => x.trim())
-		.map((x) => (x.endsWith(".json") ? x : `${x}.json`));
-}
+		const hasTranslationsFolders = () => {
+			try {
+				const dirs = fs
+					.readdirSync(dir, { withFileTypes: true })
+					.filter((d) => d.isDirectory());
+				return dirs.every((d) => codes.some((c) => c.code === d.name));
+			} catch {
+				return false;
+			}
+		};
 
-async function check(args: {
-	apiKey: string;
-	secret: string;
-	out: string;
-	project: number;
-	files: string[];
-	fail: boolean;
-}) {
-	const checks = await checkTranslations({
-		apiKey: args.apiKey,
-		secret: args.secret,
-		translationsPath: args.out,
-		projects: [{ id: args.project, files: args.files }],
-	});
+		return hasLanguages() || hasTranslationsFolders();
+	};
 
-	if (!checks.length) {
-		console.log("All looks up-to-date.");
-		process.exit(0);
-	} else {
-		const logLevel = args.fail ? "error" : "log";
-		const print = console[logLevel];
-
-		print("Found the following problems:");
-		print("");
-		for (const problem of checks) {
-			print(problem);
+	for (const pathToCheck of pathsToCheck) {
+		if (isAv4Path(pathToCheck)) {
+			return path.relative(cwd, pathToCheck);
 		}
-
-		process.exit(args.fail ? 1 : 0);
 	}
 }
 
 yargs(process.argv.slice(2))
 	.scriptName("onekey")
+	.usage(
+		"\nOneKey — AI-assisted, local-only translation workflow for TypeScript projects\n" +
+			"\nUsage: $0 <command> [options]\n" +
+			"\nTypical workflow:\n" +
+			"  1. init      Scan base locale and create oneKeyState.json\n" +
+			"  2. sync      Sync state, generate translation.ts, and report stale translations\n" +
+			"  3. status    Read-only check for stale or missing translations (CI-friendly)\n" +
+			"  4. translate Use OpenAI to update stale keys only\n",
+	)
+	.recommendCommands()
+	.demandCommand(
+		1,
+		"Please specify a command. Use --help to see available commands.",
+	)
+	.options({
+		quiet: {
+			type: "boolean",
+			alias: "q",
+			describe: "Suppress all output except errors",
+		},
+	})
 	.command(
-		"upload",
-		"Upload translations to OneSky",
+		"init",
+		"Initialize translation state tracking",
 		(yargs) =>
-			yargs.options({
-				apiKey: {
-					type: "string",
-					alias: "k",
-					describe: "OneSky API key",
-				},
-				secret: {
-					type: "string",
-					alias: "s",
-					describe: "OneSky secret",
-				},
-				project: {
-					type: "number",
-					demandOption: true,
-					alias: "p",
-					describe: "OneSky project id",
-				},
-				input: {
-					type: "string",
-					demandOption: true,
-					alias: "i",
-					describe: "Path for the translations",
-				},
-				untracked: {
-					type: "boolean",
-					alias: "u",
-					default: false,
-					describe: "Upload only files with uncommitted changes",
-				},
-				keepStrings: {
-					type: "boolean",
-					alias: "r",
-					default: false,
-					describe: "Keep strings that are not translated",
-				},
-			}),
+			yargs
+				.options({
+					path: {
+						type: "string",
+						alias: "p",
+						describe: "Path to translations directory",
+					},
+					"base-locale": {
+						type: "string",
+						alias: "l",
+						describe: "Base locale for translations",
+					},
+					"no-generate-keys": {
+						type: "boolean",
+						default: false,
+						describe: "Disable automatic generation of translation.ts",
+					},
+					yes: {
+						type: "boolean",
+						alias: "y",
+						describe: "Skip interactive prompts and use defaults",
+					},
+				})
+				.example("$0 init -p ./translations -l en", "Initialize state tracking")
+				.example(
+					"$0 init -p ./translations --no-generate-keys",
+					"Initialize without translation.ts generation",
+				)
+				.example("$0 init --yes", "Initialize with defaults, skipping prompts"),
 		async (args) => {
-			await upload({
-				apiKey: args.apiKey ?? readEnv("ONESKY_PUBLIC_KEY"),
-				secret: args.secret ?? readEnv("ONESKY_PRIVATE_KEY"),
-				projectId: args.project,
-				translationsPath: args.input,
-				untrackedOnly: args.untracked,
-				keepStrings: args.keepStrings,
+			let translationsPath = args.path;
+			let baseLocale = args["base-locale"];
+
+			const existingState = await loadState().catch((err) => {
+				if (err instanceof Error && err.message.includes("ENOENT")) {
+					return undefined;
+				}
+				throw err;
 			});
+			if (existingState) {
+				console.log(
+					chalk.yellow("Translation state already exists for this project"),
+				);
+				return;
+			}
+
+			const existingPath = findExistingTranslationsPath();
+
+			// Only show prompts if not using --yes and not all params provided
+			if (!args.yes && (!translationsPath || !baseLocale)) {
+				const answers = await prompts([
+					{
+						type: translationsPath ? null : "text",
+						name: "translationsPath",
+						message: "Path to translations directory",
+						initial: existingPath ?? "translations",
+					},
+					{
+						type: baseLocale ? null : "autocomplete",
+						name: "baseLocale",
+						message: "Base locale for translations",
+						choices: codes.map((code) => ({
+							title: `${code.code} (${code.englishName})`,
+							value: code.code,
+						})),
+						initial: "en",
+					},
+				]);
+				translationsPath = translationsPath ?? answers.translationsPath;
+				baseLocale = baseLocale ?? answers.baseLocale;
+			}
+
+			if (!translationsPath || !baseLocale) {
+				console.error(
+					chalk.red("Please provide a valid translations path and base locale"),
+				);
+				process.exit(1);
+			}
+
+			try {
+				await initializeState({
+					translationsPath,
+					baseLocale,
+					generateKeys: !args["no-generate-keys"],
+				});
+				if (!args.quiet) {
+					console.log(chalk.green("✓ Initialized translation state tracking"));
+				}
+			} catch (error) {
+				console.error(
+					chalk.red("Failed to initialize:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
+		},
+	)
+	.command(
+		"sync",
+		"Sync state, generate translation.ts, and report stale translations",
+		(yargs) =>
+			yargs.example("$0 sync", "Sync state and generate translation.ts"),
+		async () => {
+			try {
+				const exitCode = await syncState();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Sync failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
+		},
+	)
+	.command(
+		"status",
+		"Read-only check for stale or missing translations (CI-friendly)",
+		(yargs) => yargs.example("$0 status", "Report translation status"),
+		async () => {
+			try {
+				const exitCode = await checkStatus();
+				process.exit(exitCode);
+			} catch (error) {
+				console.error(
+					chalk.red("Status check failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
 	.command(
 		"translate",
 		"Translate files with OpenAI and save them in a folder",
 		(yargs) =>
-			yargs.options({
-				path: {
-					type: "string",
-					demandOption: true,
-					alias: "p",
-					describe: "Path for the json translations",
-				},
-				baseLocale: {
-					type: "string",
-					alias: "l",
-					describe: "Base locale",
-				},
-				apiUrl: {
-					type: "string",
-					alias: "u",
-					describe:
-						"OpenAI API URL (it can be read from the environment variable OPENAI_API_URL)",
-				},
-				apiKey: {
-					type: "string",
-					alias: "k",
-					describe:
-						"OpenAI API key (it can be read from the environment variable OPENAI_API_KEY)",
-				},
-				prettier: {
-					type: "string",
-					alias: "c",
-					describe: "Path for the prettier config",
-				},
-				context: {
-					alias: "x",
-					type: "string",
-					description:
-						'File with additional context for the translations, for example: "These translations are used in a booking engine for hotel rooms"',
-				},
-				tone: {
-					alias: "t",
-					type: "string",
-					default: "neutral",
-					description:
-						'Tone of the translation, for example: "formal" or "informal"',
-				},
-			}),
-		async (args) => {
-			await saveAiTranslations({
-				apiKey: args.apiKey ?? readEnv("OPENAI_API_KEY"),
-				apiUrl: args.apiUrl ?? readEnv("OPENAI_API_URL"),
-				path: args.path,
-				prettierConfigPath: args.prettier,
-				baseLocale: args.baseLocale,
-				context: args.context,
-				tone: args.tone,
-			});
-		},
-	)
-	.command(
-		"fetch",
-		"Fetch onesky json files and save them in a folder",
-		(yargs) =>
 			yargs
 				.options({
-					out: {
+					"api-url": {
 						type: "string",
-						demandOption: true,
-						alias: "o",
-						describe: "Where to save the translations",
-					},
-					project: {
-						type: "number",
-						demandOption: true,
-						alias: "p",
-						describe: "Id of the OneSky project",
-					},
-					files: {
-						type: "string",
-						demandOption: true,
-						alias: "f",
-						describe: "Files to download",
-					},
-					secret: {
-						type: "string",
-						alias: "s",
+						alias: "u",
 						describe:
-							"OneSky private key (it can be read from the environment variable ONESKY_PRIVATE_KEY)",
+							"OpenAI API URL (can be read from OPENAI_API_URL env var)",
 					},
-					apiKey: {
+					"api-key": {
 						type: "string",
 						alias: "k",
 						describe:
-							"OneSky API key (it can be read from the environment variable ONESKY_PUBLIC_KEY)",
+							"OpenAI API key (can be read from OPENAI_API_KEY env var)",
 					},
-					prettier: {
+					"api-model": {
+						type: "string",
+						alias: "m",
+						describe:
+							"OpenAI API model (can be read from OPENAI_API_MODEL env var)",
+					},
+					"prettier-config": {
 						type: "string",
 						alias: "c",
-						describe: "Path for the prettier config",
+						describe: "Path to prettier config file",
+					},
+					"context-file": {
+						alias: "C",
+						type: "string",
+						description:
+							'File with additional context for translations (e.g., "These translations are used in a booking engine")',
+					},
+					tone: {
+						alias: "t",
+						type: "string",
+						default: "neutral",
+						description:
+							'Tone of the translation (e.g., "formal" or "informal")',
+					},
+					"update-all": {
+						type: "boolean",
+						default: false,
+						describe: "Re-translate even if not stale",
+					},
+					stats: {
+						type: "boolean",
+						default: false,
+						describe: "Print stale key statistics per locale",
 					},
 				})
-				.help(),
+				.example(
+					"$0 translate --stats",
+					"Translate stale or missing keys and print statistics",
+				),
 		async (args) => {
-			await saveOneSkyTranslations({
-				oneSkyApiKey: args.apiKey ?? readEnv("ONESKY_PUBLIC_KEY"),
-				oneSkySecret: args.secret ?? readEnv("ONESKY_PRIVATE_KEY"),
-				translationsPath: args.out,
-				projects: [{ id: args.project, files: getFileNames(args.files) }],
-				prettierConfigPath: args.prettier,
-			});
+			function readEnv(key: string): string;
+			function readEnv(key: string, optional: true): string | undefined;
+			function readEnv(key: string, optional = false) {
+				const env = process.env[key];
+				if (!env && !optional) {
+					throw new Error(`Missing required environment variable: ${key}`);
+				}
+				return env;
+			}
+
+			try {
+				process.loadEnvFile();
+			} catch {}
+
+			try {
+				// Sync state first to ensure we have the latest state and translation.ts
+				await syncState();
+
+				let progressBar: any;
+				if (!args.quiet) {
+					progressBar = new cliProgress.SingleBar(
+						{
+							format: "Translating |{bar}| {percentage}% {value}/{total} tasks",
+							hideCursor: true,
+						},
+						cliProgress.Presets.shades_classic,
+					);
+				}
+
+				await saveAiTranslations({
+					apiKey: args["api-key"] ?? readEnv("OPENAI_API_KEY"),
+					apiUrl: args["api-url"] ?? readEnv("OPENAI_API_URL"),
+					apiModel: args["api-model"] ?? readEnv("OPENAI_API_MODEL", true),
+					prettierConfigPath: args["prettier-config"],
+					context: args["context-file"],
+					tone: args.tone,
+					updateAll: args["update-all"],
+					stats: args.stats,
+					onProgress: (progress) => {
+						if (!progressBar) return;
+						if (!progressBar.isActive) {
+							progressBar.start(progress.total, progress.done);
+						} else {
+							progressBar.update(progress.done);
+						}
+						if (progress.done >= progress.total && progressBar.isActive) {
+							progressBar.stop();
+						}
+					},
+				});
+				if (!args.quiet) {
+					console.log(chalk.green("✓ Translation completed successfully"));
+				}
+			} catch (error) {
+				console.error(
+					chalk.red("Translation failed:"),
+					error instanceof Error ? error.message : error,
+				);
+				process.exit(1);
+			}
 		},
 	)
 	.command(
 		"check",
-		"Fetch onesky json files and check them against a folder",
-		(yargs) =>
-			yargs
-				.options({
-					out: {
-						type: "string",
-						demandOption: true,
-						alias: "o",
-						describe: "Where to load the translations",
-					},
-					project: {
-						type: "number",
-						demandOption: true,
-						alias: "p",
-						describe: "Id of the OneSky project",
-					},
-					files: {
-						type: "string",
-						demandOption: true,
-						alias: "f",
-						describe: "Files to check",
-					},
-					secret: {
-						type: "string",
-						alias: "s",
-						describe:
-							"OneSky private key (it can be read from the environment variable ONESKY_PRIVATE_KEY)",
-					},
-					apiKey: {
-						type: "string",
-						alias: "k",
-						describe:
-							"OneSky API key (it can be read from the environment variable ONESKY_PUBLIC_KEY)",
-					},
-					fail: {
-						type: "boolean",
-						default: false,
-						alias: "l",
-						describe: "Fail when there are missing files/keys",
-					},
-				})
-				.help(),
-		async (args) => {
-			await check({
-				apiKey: args.apiKey ?? readEnv("ONESKY_PUBLIC_KEY"),
-				secret: args.secret ?? readEnv("ONESKY_PRIVATE_KEY"),
-				out: args.out,
-				project: args.project,
-				files: getFileNames(args.files),
-				fail: args.fail,
-			});
+		false,
+		(yargs) => null,
+		async () => {
+			console.warn(
+				chalk.yellow(
+					"The 'check' command is deprecated. Please use 'status' instead.",
+				),
+			);
+			await checkStatus();
 		},
+		[],
+		true,
 	)
-	.command(
-		"generate",
-		"Generate typescript keys for the translations",
-		(yargs) =>
-			yargs.options({
-				input: {
-					type: "string",
-					demandOption: true,
-					alias: "i",
-					describe: "Path for the json translations",
-				},
-				out: {
-					type: "string",
-					alias: "o",
-					describe: "Where to save the translation keys",
-				},
-				prettier: {
-					type: "string",
-					alias: "c",
-					describe: "Path for the prettier config",
-				},
-				locale: {
-					type: "string",
-					alias: "l",
-					describe: "Default locale to use",
-				},
-			}),
-		async (args) => {
-			await saveKeys({
-				defaultLocale: args.locale || "en-GB",
-				prettierConfigPath: args.prettier,
-				translationsPath: args.input,
-				translationKeysPath: args.out || args.input,
-			});
-		},
-	)
+	.wrap(120)
+	.epilog("Docs: https://github.com/guestlinelabs/onekey#readme")
 	.help().argv;

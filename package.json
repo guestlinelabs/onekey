@@ -1,7 +1,7 @@
 {
 	"name": "@guestlinelabs/onekey",
-	"version": "4.2.0",
-	"description": "Utility to download translations from the [OneSky](https://www.oneskyapp.com/) and generate typed keys in Typescript for having typed translations.",
+	"version": "5.0.0-beta.4",
+	"description": "Local translation management utility with AI translation support and TypeScript key generation",
 	"bin": {
 		"onekey": "lib/cli.js"
 	},
@@ -14,8 +14,8 @@
 		"build": "tsc",
 		"prepare": "npm run build",
 		"lint": "biome check --write .",
-		"start": "cross-env TS_NODE_FILES=true node-dev -r ts-node/register src/cli.ts",
-		"test": "vitest --run",
+		"test": "vitest --run --silent",
+		"coverage": "vitest run --coverage",
 		"test:watch": "vitest"
 	},
 	"keywords": [],
@@ -23,25 +23,29 @@
 	"license": "ISC",
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
+		"@types/cli-progress": "^3.11.6",
 		"@types/md5": "^2.3.5",
 		"@types/nock": "^11.1.0",
-		"@types/node": "^22.10.2",
+		"@types/node": "^24.1.0",
+		"@types/prompts": "^2.4.9",
 		"@types/yargs": "^17.0.33",
-		"cross-env": "^7.0.3",
+		"@vitest/coverage-v8": "^3.2.4",
 		"md5": "^2.3.0",
 		"nock": "^14.0.0-beta.19",
-		"node-dev": "^8.0.0",
 		"rimraf": "^6.0.1",
 		"typescript": "^5.7.2",
-		"vitest": "^2.1.8"
+		"vitest": "^3.2.4"
 	},
 	"peerDependencies": {
 		"prettier": "2 || 3"
 	},
 	"dependencies": {
-		"@guestlinelabs/onesky-utils": "^2.0.1",
+		"chalk": "^5.4.1",
+		"cli-progress": "^3.12.0",
+		"prettier": "2 || 3",
+		"prompts": "^2.4.2",
 		"yargs": "^17.7.2",
-		"zod": "^3.14.3"
+		"zod": "^3.23.8"
 	},
 	"directories": {
 		"lib": "lib"
