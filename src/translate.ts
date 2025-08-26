@@ -153,9 +153,12 @@ async function performTranslations({
 
 		const namespace = file.replace(".json", "");
 		const now = new Date();
-		const flatDefaultKeys = flattenKeys(defaultLanguageContent, namespace);
-		for (const key of flatDefaultKeys) {
-			touch(state, defaultLanguage.code, key, now);
+		const flatDefaultKeyValues = flattenKeyValues(
+			defaultLanguageContent,
+			namespace,
+		);
+		for (const [key, value] of Object.entries(flatDefaultKeyValues)) {
+			touch(state, defaultLanguage.code, key, now, value);
 		}
 
 		await Promise.all(
@@ -259,9 +262,12 @@ async function translateLanguage({
 		translatedContent = { ...translatedContent, ...translation };
 	}
 
-	const flatTranslatedKeys = flattenKeys(translatedContent, namespace);
-	for (const key of flatTranslatedKeys) {
-		touch(state, targetLanguage.code, key, now);
+	const flatTranslatedKeyValues = flattenKeyValues(
+		translatedContent,
+		namespace,
+	);
+	for (const [key, value] of Object.entries(flatTranslatedKeyValues)) {
+		touch(state, targetLanguage.code, key, now, value);
 	}
 
 	const result = { ...existingTranslations, ...translatedContent };
@@ -361,6 +367,27 @@ function flattenKeys(obj: any, namespace: string, prefix = ""): string[] {
 	}
 
 	return keys;
+}
+
+function flattenKeyValues(
+	obj: any,
+	namespace: string,
+	prefix = "",
+): Record<string, string> {
+	const result: Record<string, string> = {};
+
+	for (const [key, value] of Object.entries(obj)) {
+		const fullKey = prefix ? `${prefix}.${key}` : key;
+		const namespacedKey = `${namespace}.${fullKey}`;
+
+		if (typeof value === "string") {
+			result[namespacedKey] = value;
+		} else if (typeof value === "object" && value !== null) {
+			Object.assign(result, flattenKeyValues(value, namespace, fullKey));
+		}
+	}
+
+	return result;
 }
 
 function buildTranslationPrompt(
