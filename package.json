@@ -1,6 +1,6 @@
 {
 	"name": "@guestlinelabs/onekey",
-	"version": "5.0.2",
+	"version": "5.0.3",
 	"description": "Local translation management utility with AI translation support and TypeScript key generation",
 	"bin": {
 		"onekey": "lib/cli.js"

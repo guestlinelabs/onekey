@@ -774,8 +774,12 @@ describe("File Operations", () => {
 				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]); // All locales for new languages check
 			mockReadFile
 				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - only hello remains
-				.mockResolvedValueOnce('{"hello": "Hola", "obsolete1": "Obsoleto1", "obsolete2": "Obsoleto2"}') // Spanish locale
-				.mockResolvedValueOnce('{"hello": "Bonjour", "obsolete1": "Obsolète1", "obsolete2": "Obsolète2"}'); // French locale
+				.mockResolvedValueOnce(
+					'{"hello": "Hola", "obsolete1": "Obsoleto1", "obsolete2": "Obsoleto2"}',
+				) // Spanish locale
+				.mockResolvedValueOnce(
+					'{"hello": "Bonjour", "obsolete1": "Obsolète1", "obsolete2": "Obsolète2"}',
+				); // French locale
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
