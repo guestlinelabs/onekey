@@ -145,6 +145,7 @@ export async function syncState(): Promise<number> {
 
 			// Remove keys that no longer exist in base locale files
 			let hasRemovedKeys = false;
+			const removedKeys = new Set<string>();
 			const baseLocaleEntry = state.locales.find(
 				(loc) => loc.code === baseLocale,
 			);
@@ -154,10 +155,11 @@ export async function syncState(): Promise<number> {
 						delete baseLocaleEntry.keys[existingKey];
 						// Remove from all other locales
 						for (const localeEntry of state.locales) {
-							if (localeEntry.code !== baseLocale) {
+							if (localeEntry.code !== baseLocale && localeEntry.keys) {
 								delete localeEntry.keys[existingKey];
 							}
 						}
+						removedKeys.add(existingKey);
 						hasRemovedKeys = true;
 					}
 				}
@@ -231,6 +233,11 @@ export async function syncState(): Promise<number> {
 					const flatEntries = flattenKeysWithValues(content, namespace);
 
 					for (const { key, value } of flatEntries) {
+						// Skip keys that were just removed from the base locale
+						if (removedKeys.has(key)) {
+							continue;
+						}
+
 						// Check if this key exists in the state for this locale
 						const existingKey = localeEntry?.keys?.[key];
 

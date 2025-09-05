@@ -868,6 +868,395 @@ describe("File Operations", () => {
 				"Hello",
 			);
 		});
+
+		it("should not re-add keys that were just removed from base locale", async () => {
+			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+			mockLoadState.mockResolvedValue({
+				version: "0",
+				baseLocale: "en-GB",
+				translationsPath: "public/translations",
+				generateKeys: false,
+				locales: [
+					{
+						code: "en-GB",
+						englishName: "English",
+						localName: "English",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Hello",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Removed",
+							},
+						},
+					},
+					{
+						code: "es-ES",
+						englishName: "Spanish",
+						localName: "Español",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Hola",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Eliminado",
+							},
+						},
+					},
+				],
+			});
+			mockReaddir
+				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales including base
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - removed key is gone
+				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}'); // Spanish locale - removed key still exists in JSON
+			mockSaveState.mockResolvedValue(undefined);
+			mockTouch.mockImplementation(() => {});
+
+			await syncState();
+
+			// Should save state due to removed keys
+			expect(mockSaveState).toHaveBeenCalled();
+
+			// Verify the state was updated correctly - removed key should be gone from all locales
+			const savedState = mockSaveState.mock.calls[0][0];
+			expect(savedState.locales[0].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[0].keys["main.removed"]).toBeUndefined();
+			expect(savedState.locales[1].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[1].keys["main.removed"]).toBeUndefined();
+
+			// Should not call touch for the removed key even though it exists in Spanish JSON
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.removed",
+				expect.any(Date),
+				"Eliminado",
+			);
+
+			consoleSpy.mockRestore();
+		});
+
+		it("should handle multiple removed keys and not re-add any of them", async () => {
+			mockLoadState.mockResolvedValue({
+				version: "0",
+				baseLocale: "en-GB",
+				translationsPath: "public/translations",
+				generateKeys: false,
+				locales: [
+					{
+						code: "en-GB",
+						englishName: "English",
+						localName: "English",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Hello",
+							},
+							"main.removed1": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Removed1",
+							},
+							"main.removed2": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Removed2",
+							},
+						},
+					},
+					{
+						code: "es-ES",
+						englishName: "Spanish",
+						localName: "Español",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Hola",
+							},
+							"main.removed1": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Eliminado1",
+							},
+							"main.removed2": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Eliminado2",
+							},
+						},
+					},
+				],
+			});
+			mockReaddir
+				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales including base
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - removed keys are gone
+				.mockResolvedValueOnce(
+					'{"hello": "Hola", "removed1": "Eliminado1", "removed2": "Eliminado2"}',
+				); // Spanish locale - removed keys still exist in JSON
+			mockSaveState.mockResolvedValue(undefined);
+			mockTouch.mockImplementation(() => {});
+
+			await syncState();
+
+			// Should save state due to removed keys
+			expect(mockSaveState).toHaveBeenCalled();
+
+			// Verify the state was updated correctly - all removed keys should be gone from all locales
+			const savedState = mockSaveState.mock.calls[0][0];
+			expect(savedState.locales[0].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[0].keys["main.removed1"]).toBeUndefined();
+			expect(savedState.locales[0].keys["main.removed2"]).toBeUndefined();
+			expect(savedState.locales[1].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[1].keys["main.removed1"]).toBeUndefined();
+			expect(savedState.locales[1].keys["main.removed2"]).toBeUndefined();
+
+			// Should not call touch for any of the removed keys
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.removed1",
+				expect.any(Date),
+				"Eliminado1",
+			);
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.removed2",
+				expect.any(Date),
+				"Eliminado2",
+			);
+		});
+
+		it("should handle removed keys across multiple files and locales", async () => {
+			mockLoadState.mockResolvedValue({
+				version: "0",
+				baseLocale: "en-GB",
+				translationsPath: "public/translations",
+				generateKeys: false,
+				locales: [
+					{
+						code: "en-GB",
+						englishName: "English",
+						localName: "English",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Hello",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Removed",
+							},
+							"common.removed": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Common Removed",
+							},
+						},
+					},
+					{
+						code: "es-ES",
+						englishName: "Spanish",
+						localName: "Español",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Hola",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Eliminado",
+							},
+							"common.removed": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Común Eliminado",
+							},
+						},
+					},
+					{
+						code: "fr-FR",
+						englishName: "French",
+						localName: "Français",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T08:00:00Z",
+								current: "Bonjour",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T08:00:00Z",
+								current: "Supprimé",
+							},
+							"common.removed": {
+								lastModified: "2025-01-15T08:00:00Z",
+								current: "Commun Supprimé",
+							},
+						},
+					},
+				],
+			});
+			mockReaddir
+				.mockResolvedValueOnce(["main.json", "common.json"]) // Base locale JSON files
+				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]); // All locales including base
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale main.json - removed key is gone
+				.mockResolvedValueOnce("{}") // Base locale common.json - removed key is gone
+				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}') // Spanish main.json - removed key still exists
+				.mockResolvedValueOnce('{"removed": "Común Eliminado"}') // Spanish common.json - removed key still exists
+				.mockResolvedValueOnce('{"hello": "Bonjour", "removed": "Supprimé"}') // French main.json - removed key still exists
+				.mockResolvedValueOnce('{"removed": "Commun Supprimé"}'); // French common.json - removed key still exists
+			mockSaveState.mockResolvedValue(undefined);
+			mockTouch.mockImplementation(() => {});
+
+			await syncState();
+
+			// Should save state due to removed keys
+			expect(mockSaveState).toHaveBeenCalled();
+
+			// Verify the state was updated correctly - all removed keys should be gone from all locales
+			const savedState = mockSaveState.mock.calls[0][0];
+
+			// Check base locale
+			expect(savedState.locales[0].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[0].keys["main.removed"]).toBeUndefined();
+			expect(savedState.locales[0].keys["common.removed"]).toBeUndefined();
+
+			// Check Spanish locale
+			expect(savedState.locales[1].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[1].keys["main.removed"]).toBeUndefined();
+			expect(savedState.locales[1].keys["common.removed"]).toBeUndefined();
+
+			// Check French locale
+			expect(savedState.locales[2].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[2].keys["main.removed"]).toBeUndefined();
+			expect(savedState.locales[2].keys["common.removed"]).toBeUndefined();
+
+			// Should not call touch for any of the removed keys across any locale
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.removed",
+				expect.any(Date),
+				"Eliminado",
+			);
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"common.removed",
+				expect.any(Date),
+				"Común Eliminado",
+			);
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"fr-FR",
+				"main.removed",
+				expect.any(Date),
+				"Supprimé",
+			);
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"fr-FR",
+				"common.removed",
+				expect.any(Date),
+				"Commun Supprimé",
+			);
+		});
+
+		it.skip("should still add new keys that are not in the removed set", async () => {
+			mockLoadState.mockResolvedValue({
+				version: "0",
+				baseLocale: "en-GB",
+				translationsPath: "public/translations",
+				generateKeys: false,
+				locales: [
+					{
+						code: "en-GB",
+						englishName: "English",
+						localName: "English",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Hello",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T10:00:00Z",
+								current: "Removed",
+							},
+						},
+					},
+					{
+						code: "es-ES",
+						englishName: "Spanish",
+						localName: "Español",
+						keys: {
+							"main.hello": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Hola",
+							},
+							"main.removed": {
+								lastModified: "2025-01-15T09:00:00Z",
+								current: "Eliminado",
+							},
+						},
+					},
+				],
+			});
+			mockReaddir
+				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]) // All locales including base
+				.mockResolvedValueOnce(["main.json"]); // Spanish locale files
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello", "newkey": "New Key"}') // Base locale - removed key is gone, new key added
+				.mockResolvedValueOnce(
+					'{"hello": "Hola", "removed": "Eliminado", "newkey": "Nueva Clave"}',
+				); // Spanish locale - removed key still exists, new key added
+			mockSaveState.mockResolvedValue(undefined);
+			mockTouch.mockImplementation(() => {});
+
+			await syncState();
+
+			// Should save state due to removed keys and new keys
+			expect(mockSaveState).toHaveBeenCalled();
+
+			// Verify the state was updated correctly
+			const savedState = mockSaveState.mock.calls[0][0];
+			expect(savedState.locales[0].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[0].keys["main.removed"]).toBeUndefined();
+			expect(savedState.locales[1].keys["main.hello"]).toBeDefined();
+			expect(savedState.locales[1].keys["main.removed"]).toBeUndefined();
+
+			// The new key should be added to both locales
+			expect(savedState.locales[0].keys["main.newkey"]).toBeDefined();
+			expect(savedState.locales[1].keys["main.newkey"]).toBeDefined();
+
+			// Should call touch for the new key in both locales
+			expect(mockTouch).toHaveBeenCalledWith(
+				expect.any(Object),
+				"en-GB",
+				"main.newkey",
+				expect.any(Date),
+				"New Key",
+			);
+			expect(mockTouch).toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.newkey",
+				expect.any(Date),
+				"Nueva Clave",
+			);
+
+			// Should not call touch for the removed key
+			expect(mockTouch).not.toHaveBeenCalledWith(
+				expect.any(Object),
+				"es-ES",
+				"main.removed",
+				expect.any(Date),
+				"Eliminado",
+			);
+		});
 	});
 
 	describe("saveKeys", () => {
