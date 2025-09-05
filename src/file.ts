@@ -17,6 +17,34 @@ import { translate } from "./translate";
 import { TranslationSchema } from "./types";
 import { readJSON, writeJSON } from "./utils";
 
+/**
+ * Recursively removes a key from a nested object using dot notation
+ * @param obj The object to remove the key from
+ * @param keyPath The dot-separated path to the key (e.g., "nested.key")
+ * @returns true if the key was found and removed, false otherwise
+ */
+function removeKeyFromObject(obj: any, keyPath: string): boolean {
+	const keys = keyPath.split(".");
+	let current = obj;
+
+	for (let i = 0; i < keys.length - 1; i++) {
+		const key = keys[i];
+		if (current[key] && typeof current[key] === "object") {
+			current = current[key];
+		} else {
+			return false;
+		}
+	}
+
+	const finalKey = keys[keys.length - 1];
+	if (Object.prototype.hasOwnProperty.call(current, finalKey)) {
+		delete current[finalKey];
+		return true;
+	}
+
+	return false;
+}
+
 export async function initializeState({
 	translationsPath,
 	baseLocale,
@@ -165,8 +193,58 @@ export async function syncState(): Promise<number> {
 				}
 			}
 
+			// Remove the removed keys from JSON files of all other locales
+			if (removedKeys.size > 0) {
+				const allLocales = await readdir(translationsPath, {
+					withFileTypes: true,
+				})
+					.then((files) =>
+						files
+							.filter((f) => f.isDirectory())
+							.map((f) => f.name)
+							.filter((f) => f !== baseLocale),
+					)
+					.catch(() => []);
+
+				for (const locale of allLocales) {
+					const localePath = path.join(translationsPath, locale);
+					let localeFileNames: string[] = await readdir(localePath).catch(
+						() => [],
+					);
+					if (!Array.isArray(localeFileNames)) {
+						localeFileNames = [];
+					}
+
+					for (const fileName of baseFileNames.filter((f) =>
+						f.endsWith(".json"),
+					)) {
+						if (!localeFileNames.includes(fileName)) {
+							continue;
+						}
+
+						const filePath = path.join(localePath, fileName);
+						const content = await readJSON(TranslationSchema, filePath);
+						const namespace = fileName.replace(".json", "");
+
+						let hasChanges = false;
+						for (const removedKey of removedKeys) {
+							if (removedKey.startsWith(`${namespace}.`)) {
+								const keyInFile = removedKey.substring(`${namespace}.`.length);
+								if (removeKeyFromObject(content, keyInFile)) {
+									hasChanges = true;
+								}
+							}
+						}
+
+						if (hasChanges) {
+							await writeJSON(prettierConfig, localePath, fileName, content);
+						}
+					}
+				}
+			}
+
 			// Check for new languages and their keys
-			const allLocales = await readdir(translationsPath, {
+			const allLocalesForNewLanguages = await readdir(translationsPath, {
 				withFileTypes: true,
 			})
 				.then((files) =>
@@ -181,7 +259,7 @@ export async function syncState(): Promise<number> {
 				});
 
 			let hasNewLanguages = false;
-			for (const locale of allLocales) {
+			for (const locale of allLocalesForNewLanguages) {
 				const localeEntry = state.locales.find((loc) => loc.code === locale);
 				if (!localeEntry) {
 					// This is a new language - initialize it

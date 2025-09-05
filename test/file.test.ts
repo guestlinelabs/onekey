@@ -627,8 +627,13 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB"]); // Locales list
-			mockReadFile.mockResolvedValue('{"hello": "Hello"}'); // Only hello remains, obsolete is gone
+				.mockResolvedValueOnce(["en-GB"]) // Locales list
+				.mockResolvedValueOnce(["es-ES"]) // All locales for key removal
+				.mockResolvedValueOnce(["main.json"]) // Spanish locale files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales for new languages check
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - only hello remains, obsolete is gone
+				.mockResolvedValueOnce('{"hello": "Hola", "obsolete": "Obsoleto"}'); // Spanish locale - obsolete still exists
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
@@ -674,7 +679,9 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB"]); // Locales list
+				.mockResolvedValueOnce(["en-GB"]) // Locales list
+				.mockResolvedValueOnce([]) // All locales for key removal (empty since only base locale)
+				.mockResolvedValueOnce(["en-GB"]); // All locales for new languages check
 			mockReadFile.mockResolvedValue("{}"); // Empty file, all keys should be removed
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
@@ -760,8 +767,15 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB"]); // Locales list
-			mockReadFile.mockResolvedValue('{"hello": "Hello"}'); // Only hello remains
+				.mockResolvedValueOnce(["en-GB"]) // Locales list
+				.mockResolvedValueOnce(["es-ES", "fr-FR"]) // All locales for key removal
+				.mockResolvedValueOnce(["main.json"]) // Spanish locale files
+				.mockResolvedValueOnce(["main.json"]) // French locale files
+				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]); // All locales for new languages check
+			mockReadFile
+				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - only hello remains
+				.mockResolvedValueOnce('{"hello": "Hola", "obsolete1": "Obsoleto1", "obsolete2": "Obsoleto2"}') // Spanish locale
+				.mockResolvedValueOnce('{"hello": "Bonjour", "obsolete1": "Obsolète1", "obsolete2": "Obsolète2"}'); // French locale
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
@@ -912,10 +926,14 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales including base
+				.mockResolvedValueOnce(["en-GB", "es-ES"]) // All locales including base
+				.mockResolvedValueOnce(["es-ES"]) // All locales for key removal
+				.mockResolvedValueOnce(["main.json"]) // Spanish locale files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales for new languages check
 			mockReadFile
 				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - removed key is gone
-				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}'); // Spanish locale - removed key still exists in JSON
+				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}') // Spanish locale - removed key still exists in JSON
+				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}'); // Spanish locale - for processing
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
@@ -992,12 +1010,18 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales including base
+				.mockResolvedValueOnce(["en-GB", "es-ES"]) // All locales including base
+				.mockResolvedValueOnce(["es-ES"]) // All locales for key removal
+				.mockResolvedValueOnce(["main.json"]) // Spanish locale files
+				.mockResolvedValueOnce(["en-GB", "es-ES"]); // All locales for new languages check
 			mockReadFile
 				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale - removed keys are gone
 				.mockResolvedValueOnce(
 					'{"hello": "Hola", "removed1": "Eliminado1", "removed2": "Eliminado2"}',
-				); // Spanish locale - removed keys still exist in JSON
+				) // Spanish locale - removed keys still exist in JSON
+				.mockResolvedValueOnce(
+					'{"hello": "Hola", "removed1": "Eliminado1", "removed2": "Eliminado2"}',
+				); // Spanish locale - for processing
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
@@ -1100,14 +1124,22 @@ describe("File Operations", () => {
 			});
 			mockReaddir
 				.mockResolvedValueOnce(["main.json", "common.json"]) // Base locale JSON files
-				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]); // All locales including base
+				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]) // All locales including base
+				.mockResolvedValueOnce(["es-ES", "fr-FR"]) // All locales for key removal
+				.mockResolvedValueOnce(["main.json", "common.json"]) // Spanish locale files
+				.mockResolvedValueOnce(["main.json", "common.json"]) // French locale files
+				.mockResolvedValueOnce(["en-GB", "es-ES", "fr-FR"]); // All locales for new languages check
 			mockReadFile
 				.mockResolvedValueOnce('{"hello": "Hello"}') // Base locale main.json - removed key is gone
 				.mockResolvedValueOnce("{}") // Base locale common.json - removed key is gone
 				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}') // Spanish main.json - removed key still exists
 				.mockResolvedValueOnce('{"removed": "Común Eliminado"}') // Spanish common.json - removed key still exists
 				.mockResolvedValueOnce('{"hello": "Bonjour", "removed": "Supprimé"}') // French main.json - removed key still exists
-				.mockResolvedValueOnce('{"removed": "Commun Supprimé"}'); // French common.json - removed key still exists
+				.mockResolvedValueOnce('{"removed": "Commun Supprimé"}') // French common.json - removed key still exists
+				.mockResolvedValueOnce('{"hello": "Hola", "removed": "Eliminado"}') // Spanish main.json - for processing
+				.mockResolvedValueOnce('{"removed": "Común Eliminado"}') // Spanish common.json - for processing
+				.mockResolvedValueOnce('{"hello": "Bonjour", "removed": "Supprimé"}') // French main.json - for processing
+				.mockResolvedValueOnce('{"removed": "Commun Supprimé"}'); // French common.json - for processing
 			mockSaveState.mockResolvedValue(undefined);
 			mockTouch.mockImplementation(() => {});
 
