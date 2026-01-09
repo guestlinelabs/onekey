@@ -23,6 +23,24 @@ function transformKeys<T extends Record<string, unknown>>(
 	return transformed as T;
 }
 
+function isPluralKey(key: string, parameters: string[]): boolean {
+	const pluralSuffixes = ["_zero", "_one", "_two", "_few", "_many", "_other"];
+	return (
+		pluralSuffixes.some((suffix) => key.endsWith(suffix)) &&
+		parameters.includes("count")
+	);
+}
+
+function getBasePluralKey(key: string): string {
+	const pluralSuffixes = ["_zero", "_one", "_two", "_few", "_many", "_other"];
+	for (const suffix of pluralSuffixes) {
+		if (key.endsWith(suffix)) {
+			return key.slice(0, -suffix.length);
+		}
+	}
+	return key;
+}
+
 function getFileKeys(
 	translations: TranslationSchema,
 ): Record<string, string[]> {
@@ -120,7 +138,33 @@ export async function generateKeys({
 				...cur,
 			};
 		}, {});
-	const { parameterized, simple } = Object.entries(allKeys).reduce(
+
+	// Identify plural keys and convert them to base keys
+	const pluralBaseKeys = new Map<string, string[]>();
+	for (const key of Object.keys(allKeys)) {
+		const [namespace, ...rest] = key.split(":");
+		const translationKey = rest.join(":");
+		if (isPluralKey(translationKey, allKeys[key])) {
+			const baseKey = getBasePluralKey(translationKey);
+			const fullBaseKey = `${namespace}:${baseKey}`;
+			// Store the parameters from the first plural form we encounter
+			if (!pluralBaseKeys.has(fullBaseKey)) {
+				pluralBaseKeys.set(fullBaseKey, allKeys[key]);
+			}
+		}
+	}
+
+	// Add base keys for plural forms with their parameters
+	const allKeysWithPluralBases = { ...allKeys };
+	for (const [baseKey, parameters] of pluralBaseKeys.entries()) {
+		if (!allKeysWithPluralBases[baseKey]) {
+			allKeysWithPluralBases[baseKey] = parameters;
+		}
+	}
+
+	const { parameterized, simple } = Object.entries(
+		allKeysWithPluralBases,
+	).reduce(
 		(acc, [key, parameters]) => {
 			if (parameters.length > 0) {
 				return {
