@@ -546,5 +546,38 @@ describe("generate-translation-keys", () => {
 				"export type TranslationKeyWithoutOptions = never",
 			);
 		});
+
+		it("should not generate duplicate keys when base key exists alongside plural forms", async () => {
+			const translationsWithBaseAndPluralKeys: Translations = {
+				main: {
+					items: "Items", // Base key without parameters
+					items_one: "{{count}} item",
+					items_other: "{{count}} items",
+				},
+			};
+
+			const source = await generateKeys({
+				translations: translationsWithBaseAndPluralKeys,
+				languages,
+				prettierConfig: {},
+				defaultLocale: "en-GB",
+			});
+
+			// Count how many times "main:items" appears in TranslationKeyWithOptions
+			const optionsTypeMatch = source.match(
+				/export type TranslationKeyWithOptions = {[^}]*}/s,
+			);
+			if (optionsTypeMatch) {
+				const optionsType = optionsTypeMatch[0];
+				const itemsMatches = optionsType.match(/"main:items":/g);
+				expect(itemsMatches?.length).toBe(1); // Should only appear once
+			}
+
+			// Should have "main:items" in TranslationKeyWithoutOptions since base key has no params
+			expect(source).toContain('"main:items"');
+			// Should have plural forms with count parameter in TranslationKeyWithOptions
+			expect(source).toContain('"main:items_one": { count: number }');
+			expect(source).toContain('"main:items_other": { count: number }');
+		});
 	});
 });
