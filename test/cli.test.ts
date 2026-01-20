@@ -46,7 +46,7 @@ describe("CLI", () => {
 			const { initializeState } = await import("../src/file");
 
 			// Mock successful initialization
-			vi.mocked(initializeState).mockResolvedValue(undefined);
+			(initializeState as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
 			// This would require testing the actual CLI execution
 			// For now, we'll test the imported functions directly
@@ -57,7 +57,7 @@ describe("CLI", () => {
 			const { initializeState } = await import("../src/file");
 
 			// Mock failed initialization
-			vi.mocked(initializeState).mockRejectedValue(
+			(initializeState as ReturnType<typeof vi.fn>).mockRejectedValue(
 				new Error("Initialization failed"),
 			);
 
@@ -70,7 +70,7 @@ describe("CLI", () => {
 			const { syncState } = await import("../src/file");
 
 			// Mock successful sync
-			vi.mocked(syncState).mockResolvedValue(0);
+			(syncState as ReturnType<typeof vi.fn>).mockResolvedValue(0);
 
 			expect(syncState).toBeDefined();
 		});
@@ -79,7 +79,7 @@ describe("CLI", () => {
 			const { syncState } = await import("../src/file");
 
 			// Mock failed sync
-			vi.mocked(syncState).mockRejectedValue(new Error("Sync failed"));
+			(syncState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Sync failed"));
 
 			expect(syncState).toBeDefined();
 		});
@@ -90,7 +90,7 @@ describe("CLI", () => {
 			const { checkStatus } = await import("../src/file");
 
 			// Mock successful status check
-			vi.mocked(checkStatus).mockResolvedValue(0);
+			(checkStatus as ReturnType<typeof vi.fn>).mockResolvedValue(0);
 
 			expect(checkStatus).toBeDefined();
 		});
@@ -99,7 +99,7 @@ describe("CLI", () => {
 			const { checkStatus } = await import("../src/file");
 
 			// Mock failed status check
-			vi.mocked(checkStatus).mockRejectedValue(
+			(checkStatus as ReturnType<typeof vi.fn>).mockRejectedValue(
 				new Error("Status check failed"),
 			);
 
@@ -112,7 +112,7 @@ describe("CLI", () => {
 			const { saveAiTranslations } = await import("../src/file");
 
 			// Mock successful translation
-			vi.mocked(saveAiTranslations).mockResolvedValue(undefined);
+			(saveAiTranslations as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
 			expect(saveAiTranslations).toBeDefined();
 		});
@@ -121,7 +121,7 @@ describe("CLI", () => {
 			const { saveAiTranslations } = await import("../src/file");
 
 			// Mock failed translation
-			vi.mocked(saveAiTranslations).mockRejectedValue(
+			(saveAiTranslations as ReturnType<typeof vi.fn>).mockRejectedValue(
 				new Error("Translation failed"),
 			);
 
@@ -134,7 +134,7 @@ describe("CLI", () => {
 			const { checkStatus } = await import("../src/file");
 
 			// Mock successful status check
-			vi.mocked(checkStatus).mockResolvedValue(0);
+			(checkStatus as ReturnType<typeof vi.fn>).mockResolvedValue(0);
 
 			expect(checkStatus).toBeDefined();
 		});

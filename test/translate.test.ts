@@ -5,6 +5,7 @@ import {
 	type State,
 	diffState,
 	getLanguagesInfo,
+	isStale,
 	loadState,
 	saveState,
 	touch,
@@ -25,6 +26,7 @@ vi.mock("../src/state", () => ({
 	getLanguagesInfo: vi.fn(),
 	diffState: vi.fn(),
 	touch: vi.fn(),
+	isStale: vi.fn(),
 }));
 
 // Mock fetch globally
@@ -37,6 +39,7 @@ const mockSaveState = vi.mocked(saveState);
 const mockGetLanguagesInfo = vi.mocked(getLanguagesInfo);
 const mockDiffState = vi.mocked(diffState);
 const mockTouch = vi.mocked(touch);
+const mockIsStale = vi.mocked(isStale);
 const mockFetch = vi.mocked(fetch);
 
 describe("translate", () => {
@@ -81,6 +84,7 @@ describe("translate", () => {
 		mockSaveState.mockResolvedValue(undefined);
 		mockDiffState.mockReturnValue([]);
 		mockTouch.mockImplementation(() => {});
+		mockIsStale.mockReturnValue(false);
 		mockReaddir.mockResolvedValue(["main.json"]);
 		mockReadFile.mockResolvedValue('{"hello": "Hello", "goodbye": "Goodbye"}');
 	});

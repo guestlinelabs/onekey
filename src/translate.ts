@@ -3,6 +3,7 @@ import {
 	type State,
 	diffState,
 	getLanguagesInfo,
+	isStale,
 	loadState,
 	saveState,
 	touch,
@@ -230,20 +231,28 @@ async function translateLanguage({
 		existingTranslations = {};
 	}
 
-	const missingTranslations = updateAll
+	const missingOrStaleTranslations = updateAll
 		? defaultLanguageContent
 		: Object.entries(defaultLanguageContent).reduce((acc, [key, value]) => {
-				if (!(key in existingTranslations)) {
+				const namespacedKey = `${namespace}.${key}`;
+				const isMissing = !(key in existingTranslations);
+				const isKeyStale = isStale(
+					state,
+					defaultLanguage.code,
+					targetLanguage.code,
+					namespacedKey,
+				);
+				if (isMissing || isKeyStale) {
 					acc[key] = value;
 				}
 				return acc;
 			}, {} as GenericTranslations);
 
-	if (Object.keys(missingTranslations).length === 0) {
+	if (Object.keys(missingOrStaleTranslations).length === 0) {
 		return existingTranslations;
 	}
 
-	const chunks = splitIntoChunks(missingTranslations, 100);
+	const chunks = splitIntoChunks(missingOrStaleTranslations, 100);
 	let translatedContent: GenericTranslations = {};
 
 	for (const chunk of chunks) {
@@ -274,8 +283,8 @@ async function translateLanguage({
 
 	console.log(
 		`Finished translating ${file} for ${targetLanguage.code}. ${
-			Object.keys(missingTranslations).length
-		} keys added`,
+			Object.keys(missingOrStaleTranslations).length
+		} keys translated`,
 	);
 
 	return result;
