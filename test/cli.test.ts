@@ -46,7 +46,9 @@ describe("CLI", () => {
 			const { initializeState } = await import("../src/file");
 
 			// Mock successful initialization
-			(initializeState as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+			(initializeState as ReturnType<typeof vi.fn>).mockResolvedValue(
+				undefined,
+			);
 
 			// This would require testing the actual CLI execution
 			// For now, we'll test the imported functions directly
@@ -79,7 +81,9 @@ describe("CLI", () => {
 			const { syncState } = await import("../src/file");
 
 			// Mock failed sync
-			(syncState as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Sync failed"));
+			(syncState as ReturnType<typeof vi.fn>).mockRejectedValue(
+				new Error("Sync failed"),
+			);
 
 			expect(syncState).toBeDefined();
 		});
@@ -112,7 +116,9 @@ describe("CLI", () => {
 			const { saveAiTranslations } = await import("../src/file");
 
 			// Mock successful translation
-			(saveAiTranslations as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+			(saveAiTranslations as ReturnType<typeof vi.fn>).mockResolvedValue(
+				undefined,
+			);
 
 			expect(saveAiTranslations).toBeDefined();
 		});
