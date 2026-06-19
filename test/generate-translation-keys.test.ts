@@ -219,6 +219,67 @@ describe("generate-translation-keys", () => {
 		expect(source).toContain('pt: "pt-PT"');
 	});
 
+	it("emits one entry per ISO-639-1 prefix and never duplicate keys", async () => {
+		const collidingLanguages: LanguageInfo[] = [
+			{ code: "en-GB", englishName: "English (UK)", localName: "English" },
+			{
+				code: "zh-Hans",
+				englishName: "Chinese (Simplified)",
+				localName: "简体中文",
+			},
+			{
+				code: "zh-Hant",
+				englishName: "Chinese (Traditional)",
+				localName: "繁體中文",
+			},
+			{ code: "en-US", englishName: "English (US)", localName: "English (US)" },
+			{ code: "pt-PT", englishName: "Portuguese", localName: "Português" },
+			{
+				code: "pt-BR",
+				englishName: "Portuguese (Brazil)",
+				localName: "Português (Brasil)",
+			},
+		];
+
+		const source = await generateKeys({
+			translations,
+			languages: collidingLanguages,
+			prettierConfig: {},
+			defaultLocale: "en-GB",
+		});
+
+		// The default locale wins its prefix; other collisions resolve first-wins.
+		expect(source).toContain('en: "en-GB"');
+		expect(source).toContain('zh: "zh-Hans"');
+		expect(source).toContain('pt: "pt-PT"');
+
+		// The clobbered variants must NOT produce their own short-code entry.
+		expect(source).not.toContain('en: "en-US"');
+		expect(source).not.toContain('zh: "zh-Hant"');
+		expect(source).not.toContain('pt: "pt-BR"');
+
+		// No ISO-639-1 prefix may appear more than once (no duplicate object keys).
+		for (const prefix of ["en", "zh", "pt"]) {
+			const occurrences = source.match(new RegExp(`\\b${prefix}: "`, "g"));
+			expect(occurrences?.length).toBe(1);
+		}
+	});
+
+	it("prefers the default locale for a shared prefix regardless of order", async () => {
+		const source = await generateKeys({
+			translations,
+			languages: [
+				{ code: "en-US", englishName: "English (US)", localName: "English" },
+				{ code: "en-GB", englishName: "English (UK)", localName: "English" },
+			],
+			prettierConfig: {},
+			defaultLocale: "en-GB",
+		});
+
+		expect(source).toContain('en: "en-GB"');
+		expect(source).not.toContain('en: "en-US"');
+	});
+
 	it("should handle prettier configuration", async () => {
 		const prettierConfig = {
 			semi: true,

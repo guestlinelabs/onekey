@@ -6,6 +6,41 @@ export interface Translations {
 	[fileName: string]: TranslationSchema;
 }
 
+function getIso1Key(code: string): string {
+	return code.includes("-") ? code.split("-")[0] : code;
+}
+
+/**
+ * Builds the body of the `iso1ToLocale` map (ISO-639-1 prefix -> full locale).
+ *
+ * Several locales can share the same ISO-639-1 prefix (e.g. en-GB/en-US,
+ * zh-Hans/zh-Hant, pt-PT/pt-BR). Emitting one entry per locale produced a
+ * literal with duplicate object keys, where the last declaration silently
+ * overwrote the previous ones. To avoid that:
+ *  - the default locale is processed first, so a shared prefix maps to it;
+ *  - remaining prefix collisions resolve to the first listed locale.
+ * The result always contains exactly one entry per prefix.
+ */
+function buildIso1ToLocale(
+	languages: LanguageInfo[],
+	defaultLocale: string,
+): string {
+	const ordered = [
+		...languages.filter((lang) => lang.code === defaultLocale),
+		...languages.filter((lang) => lang.code !== defaultLocale),
+	];
+
+	const seen = new Map<string, string>();
+	for (const { code } of ordered) {
+		const key = getIso1Key(code);
+		if (!seen.has(key)) {
+			seen.set(key, code);
+		}
+	}
+
+	return Array.from(seen, ([key, code]) => `${key}: '${code}'`).join(", ");
+}
+
 function extractTranslationParameters(translation: string): string[] {
 	const match = translation.match(/{{\w+}}/g) || [];
 
@@ -77,13 +112,10 @@ export async function generateKeys({
   export type Locale = typeof locales[number];
   export const defaultLocale: Locale = '${defaultLocale}';
 
-  export const iso1ToLocale: { [key: string]: Locale } = {${languages
-		.map(({ code }) =>
-			code.includes("-")
-				? `${code.split("-")[0]}: '${code}'`
-				: `${code}: '${code}'`,
-		)
-		.join(", ")}}
+  export const iso1ToLocale: { [key: string]: Locale } = {${buildIso1ToLocale(
+		languages,
+		defaultLocale,
+	)}}
 
   export const languages: Array<{ code: Locale; englishName: string; localName: string }> = ${JSON.stringify(
 		languages,
@@ -146,13 +178,10 @@ export async function generateKeys({
   export type Locale = typeof locales[number];
   export const defaultLocale: Locale = '${defaultLocale}';
 
-  export const iso1ToLocale: { [key: string]: Locale } = {${languages
-		.map(({ code }) =>
-			code.includes("-")
-				? `${code.split("-")[0]}: '${code}'`
-				: `${code}: '${code}'`,
-		)
-		.join(", ")}}
+  export const iso1ToLocale: { [key: string]: Locale } = {${buildIso1ToLocale(
+		languages,
+		defaultLocale,
+	)}}
 
   export const languages: Array<{ code: Locale; englishName: string; localName: string }> = ${JSON.stringify(
 		languages,
