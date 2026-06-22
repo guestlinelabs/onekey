@@ -6,6 +6,8 @@ export interface Translations {
 	[fileName: string]: TranslationSchema;
 }
 
+// Assumes BCP 47 locale format (e.g. 'en-GB', 'zh-Hans', 'zh-Hans-CN').
+// The ISO-639-1 key is always the first hyphen-delimited segment.
 function getIso1Key(code: string): string {
 	return code.includes("-") ? code.split("-")[0] : code;
 }
