@@ -27,10 +27,13 @@ function buildIso1ToLocale(
 	languages: LanguageInfo[],
 	defaultLocale: string,
 ): string {
-	const ordered = [
-		...languages.filter((lang) => lang.code === defaultLocale),
-		...languages.filter((lang) => lang.code !== defaultLocale),
-	];
+	const ordered: LanguageInfo[] = [];
+	for (const lang of languages) {
+		if (lang.code === defaultLocale) ordered.push(lang);
+	}
+	for (const lang of languages) {
+		if (lang.code !== defaultLocale) ordered.push(lang);
+	}
 
 	const seen = new Map<string, string>();
 	for (const { code } of ordered) {
