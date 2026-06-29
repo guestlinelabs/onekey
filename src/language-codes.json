@@ -1000,34 +1000,14 @@
 		"localName": "中文"
 	},
 	{
-		"code": "zh-CN",
-		"englishName": "Chinese (Simplified, China)",
-		"localName": "中文 (简体)"
-	},
-	{
 		"code": "zh-Hans",
 		"englishName": "Chinese (Simplified)",
 		"localName": "简体中文"
 	},
 	{
-		"code": "zh-Hans-CN",
-		"englishName": "Chinese (Simplified, China)",
-		"localName": "中文 (简体)"
-	},
-	{
 		"code": "zh-Hant",
 		"englishName": "Chinese (Traditional)",
 		"localName": "繁體中文"
-	},
-	{
-		"code": "zh-HK",
-		"englishName": "Chinese (Traditional, Hong Kong)",
-		"localName": "中文 (繁體)"
-	},
-	{
-		"code": "zh-TW",
-		"englishName": "Chinese (Traditional, Taiwan)",
-		"localName": "中文 (繁體)"
 	},
 	{
 		"code": "zu",
